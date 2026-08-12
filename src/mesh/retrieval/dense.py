@@ -55,6 +55,32 @@ class ChromaDense:
             metadatas=[{"source": c.source, "ordinal": c.ordinal} for c in chunks],
         )
 
+    def fetch(self, chunk_ids: Sequence[str]) -> list[Chunk]:
+        """Rehydrate chunks by id, in the order requested.
+
+        Retrieval yields ids; reranking needs the text behind them. The requested
+        order is the fused ranking and Chroma does not promise to preserve it, so
+        the result is reordered here rather than trusted.
+        """
+        if not chunk_ids:
+            return []
+
+        result = self._collection.get(ids=list(chunk_ids))
+        documents = result.get("documents") or []
+        metadatas = result.get("metadatas") or []
+
+        by_id: dict[str, Chunk] = {}
+        for chunk_id, text, metadata in zip(result["ids"], documents, metadatas, strict=True):
+            meta = metadata or {}
+            by_id[chunk_id] = Chunk(
+                chunk_id=chunk_id,
+                source=str(meta.get("source", "")),
+                text=text or "",
+                ordinal=int(meta.get("ordinal", 0)),  # type: ignore[arg-type]
+            )
+
+        return [by_id[chunk_id] for chunk_id in chunk_ids if chunk_id in by_id]
+
     def search(self, query: str, *, top_k: int = 20) -> list[str]:
         collection = self._collection
         if collection.count() == 0:

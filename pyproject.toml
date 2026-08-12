@@ -84,7 +84,8 @@ mypy_path = "src"
 # argument and rejects the env-driven `Settings()` call.
 plugins = ["pydantic.mypy"]
 
-# rank_bm25 ships no py.typed marker.
+# rank_bm25 ships no py.typed marker. sentence_transformers lives behind the
+# optional `rerank` extra, so it is absent in CI and in the default install.
 [[tool.mypy.overrides]]
-module = ["rank_bm25.*"]
+module = ["rank_bm25.*", "sentence_transformers.*"]
 ignore_missing_imports = true

@@ -78,6 +78,47 @@ def test_searching_an_empty_collection_returns_nothing(store):
     assert results == []
 
 
+def test_fetch_returns_the_chunks_for_the_given_ids(store):
+    """Retrieval yields ids; reranking needs the text behind them."""
+    store.upsert(CORPUS, [toy_embed(c.text) for c in CORPUS])
+
+    chunks = store.fetch(["c2", "c1"])
+
+    assert [c.chunk_id for c in chunks] == ["c2", "c1"]
+    assert chunks[0].text == "diabetes diabetes therapy guidance"
+
+
+def test_fetch_preserves_the_requested_order(store):
+    """The requested order is the fused ranking; Chroma does not promise to keep it,
+    so losing it would silently discard the ranking before reranking even runs."""
+    store.upsert(CORPUS, [toy_embed(c.text) for c in CORPUS])
+
+    chunks = store.fetch(["c3", "c1", "c2"])
+
+    assert [c.chunk_id for c in chunks] == ["c3", "c1", "c2"]
+
+
+def test_fetch_skips_ids_that_are_not_present(store):
+    store.upsert(CORPUS, [toy_embed(c.text) for c in CORPUS])
+
+    chunks = store.fetch(["c1", "missing"])
+
+    assert [c.chunk_id for c in chunks] == ["c1"]
+
+
+def test_fetching_nothing_returns_nothing(store):
+    assert store.fetch([]) == []
+
+
+def test_fetch_restores_the_source_and_ordinal(store):
+    store.upsert(CORPUS, [toy_embed(c.text) for c in CORPUS])
+
+    chunk = store.fetch(["c1"])[0]
+
+    assert chunk.source == "test"
+    assert chunk.ordinal == 0
+
+
 def test_reupserting_the_same_chunk_does_not_duplicate_it(store):
     store.upsert(CORPUS, [toy_embed(c.text) for c in CORPUS])
     store.upsert(CORPUS, [toy_embed(c.text) for c in CORPUS])
