@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     chat_model: str = Field("gpt-5-nano", validation_alias="MESH_CHAT_MODEL")
     embed_model: str = Field("text-embedding-3-small", validation_alias="MESH_EMBED_MODEL")
 
+    chroma_host: str = Field("localhost", validation_alias="CHROMA_HOST")
+    chroma_port: int = Field(8001, validation_alias="CHROMA_PORT")
+
     route_confidence_threshold: float = Field(
         0.6, validation_alias="MESH_ROUTE_CONFIDENCE_THRESHOLD"
     )

@@ -59,11 +59,14 @@ packages = ["src/mesh"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
-addopts = "-q --strict-markers"
+# Network tests are opt-in: NCBI rate-limits keyless callers, so the default
+# suite must not depend on it.
+addopts = "-q --strict-markers -m 'not network'"
 markers = [
     "llm: test performs a real LLM call (costs money, excluded from default run)",
     "eval: slow evaluation suite, CI-gated",
     "integration: needs a running Chroma; skipped automatically when absent",
+    "network: calls a live public API; opt-in via `make test-network`",
 ]
 
 [tool.ruff]
@@ -77,6 +80,9 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 python_version = "3.12"
 strict = true
 mypy_path = "src"
+# Without this, mypy treats every aliased Settings field as a required __init__
+# argument and rejects the env-driven `Settings()` call.
+plugins = ["pydantic.mypy"]
 
 # rank_bm25 ships no py.typed marker.
 [[tool.mypy.overrides]]

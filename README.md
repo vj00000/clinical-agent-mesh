@@ -30,11 +30,16 @@ for the full approved design.
 
 | Component | Depth | State |
 |---|---|---|
-| Shared spine (models, state contract) | production | in progress |
-| Retrieval (hybrid BM25 + vector, rerank) | production | pending |
-| Supervisor + routing benchmark | production | pending |
+| Shared spine (models, state contract) | production | done |
+| Retrieval (hybrid BM25 + vector) | production | done |
+| Ingestion (PubMed + MedlinePlus) | production | done |
+| Cross-encoder rerank | production | pending |
+| Supervisor + routing benchmark | production | routing policy done, LLM node pending |
 | Guideline copilot | production | pending |
+| Guardrail nodes + eval harness | production | pending |
 | Triage / prior-auth / discharge | demo | pending |
+
+66 tests passing, `ruff` and `mypy --strict` clean.
 
 ## Quick start
 

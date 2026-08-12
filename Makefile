@@ -18,6 +18,9 @@ logs:  ## Tail service logs
 test:  ## Fast tests: no LLM calls, no network
 	uv run pytest
 
+test-network:  ## Tests that call the live public clinical APIs
+	uv run pytest -m network
+
 lint:  ## Lint and format check
 	uv run ruff check .
 
