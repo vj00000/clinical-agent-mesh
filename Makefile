@@ -21,6 +21,9 @@ test:  ## Fast tests: no LLM calls, no network
 test-network:  ## Tests that call the live public clinical APIs
 	uv run pytest -m network
 
+test-rerank:  ## Tests the real cross-encoder (needs: uv sync --extra rerank)
+	uv run pytest -m rerank
+
 lint:  ## Lint and format check
 	uv run ruff check .
 
