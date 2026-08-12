@@ -40,3 +40,6 @@ eval:  ## Slow, CI-gated evaluation suite
 
 eval-routing:  ## Score the labelled routing benchmark (one LLM call per case)
 	uv run python -m mesh.evals.routing
+
+build-guideline:  ## Run the failing guideline-subgraph tests (your build)
+	uv run pytest tests/nodes/test_guideline.py -x

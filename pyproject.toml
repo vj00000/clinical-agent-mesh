@@ -48,8 +48,11 @@ observability = [
 # CUDA wheel is pure waste: it pulled 2.7GB of NVIDIA libraries and took the venv
 # to 5.0GB. Pinning the CPU build keeps `--extra rerank` installable by anyone
 # cloning this repo.
+# Linux only. The pytorch-cpu index publishes no macOS arm64 wheels, and on Apple
+# Silicon the default PyPI wheel is already CPU/MPS with no CUDA payload, so the
+# pin is both unnecessary and unresolvable there.
 [tool.uv.sources]
-torch = { index = "pytorch-cpu" }
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
 
 [[tool.uv.index]]
 name = "pytorch-cpu"
@@ -77,13 +80,14 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 # Both exclusions keep the default suite fast and hermetic: NCBI rate-limits
 # keyless callers, and importing torch costs ~30s against ~4s for everything else.
-addopts = "-q --strict-markers -m 'not network and not rerank'"
+addopts = "-q --strict-markers -m 'not network and not rerank and not todo'"
 markers = [
     "llm: test performs a real LLM call (costs money, excluded from default run)",
     "eval: slow evaluation suite, CI-gated",
     "integration: needs a running Chroma; skipped automatically when absent",
     "network: calls a live public API; opt-in via `make test-network`",
     "rerank: needs the optional rerank extra (torch); skipped when absent",
+    "todo: handoff tests for work not yet implemented; run with `make build-guideline`",
 ]
 
 [tool.ruff]
