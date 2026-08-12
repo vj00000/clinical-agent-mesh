@@ -87,6 +87,9 @@ Three options were weighed:
 | **Refusal honoured regardless of confidence** | An out-of-scope question does not become in-scope because the classifier hedged. |
 | **rerank / postgres / observability as optional extras** | `sentence-transformers` pulls torch (~2GB). CI must not download torch to run unit tests. |
 | **Local cross-encoder rerank** | Keeps reranking cost off the API bill entirely. |
+| **Reranker degrades, retrieval does not** | Opposite failure handling on purpose. An unreachable vector store changes what evidence *exists*, so it raises. A failed reranker only *reorders* evidence already retrieved and grounded, so it falls back to fusion order rather than failing the query. |
+| **torch pinned to the CPU wheel** | Default resolution installed `torch+cu130` plus 2.7GB of NVIDIA libraries — a 5.0GB venv for a CPU-only cross-encoder. Pinning takes it to 1.4GB. Two gotchas: `[tool.uv.sources]` applies only to *direct* dependencies (so torch had to be declared explicitly even though sentence-transformers pulls it), and `uv sync` reuses the lockfile — `uv lock` must regenerate it first. |
+| **Triage rules deterministic, escalate-only** | A missed emergency must not depend on model variance or a prompt regression, so the rules run alongside the LLM and never downgrade. Tuned for recall: a pulled muscle sent to urgent care costs an afternoon, a missed MI costs a life. |
 
 ### The BM25 small-corpus trap (worth remembering)
 

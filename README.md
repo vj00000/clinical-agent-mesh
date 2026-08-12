@@ -67,13 +67,14 @@ for the full approved design.
 | Ingestion (PubMed + MedlinePlus) | production | done |
 | Guardrails (PHI, injection, citations) | production | done |
 | Mesh graph wiring | production | done |
-| Cross-encoder rerank | production | pending |
+| Cross-encoder rerank | production | done (CPU-pinned) |
 | Supervisor node + routing benchmark | production | done (33-case benchmark; target 100) |
 | Guideline copilot | production | pending |
 | Eval harness | production | pending |
-| Triage / prior-auth / discharge | demo | pending |
+| Triage red-flag rules | demo | done |
+| Prior-auth / discharge specialists | demo | pending |
 
-124 tests passing, `ruff` and `mypy --strict` clean.
+149 fast tests, plus 3 rerank and 4 network tests. `ruff` and `mypy --strict` clean.
 
 ## Quick start
 
@@ -86,7 +87,12 @@ make eval                                        # print the metrics table
 ```
 
 Optional extras are separated on purpose: `--extra rerank` pulls `sentence-transformers`
-(and torch, ~2GB), so CI and unit tests do not pay for it.
+and torch, so CI and the default test run do not pay for it.
+
+torch is pinned to the **CPU wheel** via `[tool.uv.sources]`. The default resolution
+installed `torch+cu130` and 2.7GB of NVIDIA CUDA libraries — a 5.0GB virtualenv to run
+a small cross-encoder that is CPU-only by design. Pinning the CPU build takes it to
+1.4GB and the rerank tests run roughly twice as fast.
 
 ## Design decisions worth defending
 
@@ -102,13 +108,15 @@ Optional extras are separated on purpose: `--extra rerank` pulls `sentence-trans
 ## Development
 
 ```bash
-make check                 # lint + strict types + 124 tests, no LLM calls, no network
+make check                 # lint + strict types + 149 tests, no LLM calls, no network
 make test-network          # tests against the live PubMed and MedlinePlus APIs
+make test-rerank           # tests the real cross-encoder (needs --extra rerank)
 make eval-routing          # score the labelled routing benchmark (one LLM call per case)
 ```
 
-Tests marked `llm` and `network` are excluded from the default run — the first costs
-money, the second depends on NCBI rate limits.
+`llm`, `network`, and `rerank` tests are excluded from the default run: the first costs
+money, the second depends on NCBI rate limits, and the third spends ~30s importing torch
+against ~7s for everything else.
 
 ## Documentation
 

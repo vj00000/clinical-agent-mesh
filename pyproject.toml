@@ -30,6 +30,10 @@ dependencies = [
 # stays light and CI does not download torch to run unit tests.
 rerank = [
     "sentence-transformers>=3.3.0",
+    # Declared explicitly, though it arrives via sentence-transformers anyway:
+    # [tool.uv.sources] only applies to direct dependencies, and this is what
+    # pins the CPU wheel instead of the 2.7GB CUDA build.
+    "torch>=2.2.0",
 ]
 # Postgres checkpointer: conversations survive restarts (replaces InMemorySaver).
 postgres = [
@@ -39,6 +43,18 @@ postgres = [
 observability = [
     "langfuse>=2.53.0",
 ]
+
+# The reranker is a small cross-encoder that runs on CPU by design, so the default
+# CUDA wheel is pure waste: it pulled 2.7GB of NVIDIA libraries and took the venv
+# to 5.0GB. Pinning the CPU build keeps `--extra rerank` installable by anyone
+# cloning this repo.
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [dependency-groups]
 dev = [
