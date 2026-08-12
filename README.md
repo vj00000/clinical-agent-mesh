@@ -68,12 +68,12 @@ for the full approved design.
 | Guardrails (PHI, injection, citations) | production | done |
 | Mesh graph wiring | production | done |
 | Cross-encoder rerank | production | pending |
-| Supervisor + routing benchmark | production | routing policy done, LLM node pending |
+| Supervisor node + routing benchmark | production | done (33-case benchmark; target 100) |
 | Guideline copilot | production | pending |
 | Eval harness | production | pending |
 | Triage / prior-auth / discharge | demo | pending |
 
-108 tests passing, `ruff` and `mypy --strict` clean.
+124 tests passing, `ruff` and `mypy --strict` clean.
 
 ## Quick start
 
@@ -102,13 +102,22 @@ Optional extras are separated on purpose: `--extra rerank` pulls `sentence-trans
 ## Development
 
 ```bash
-uv run pytest              # fast unit + node + contract tests, no LLM calls
-uv run ruff check .
-uv run mypy src
-uv run pytest -m eval      # slow, CI-gated evaluation suite
+make check                 # lint + strict types + 124 tests, no LLM calls, no network
+make test-network          # tests against the live PubMed and MedlinePlus APIs
+make eval-routing          # score the labelled routing benchmark (one LLM call per case)
 ```
 
-Tests marked `llm` perform real API calls and are excluded from the default run.
+Tests marked `llm` and `network` are excluded from the default run — the first costs
+money, the second depends on NCBI rate limits.
+
+## Documentation
+
+| Document | What it covers |
+|---|---|
+| `docs/superpowers/specs/` | The approved design spec |
+| `docs/DECISIONS.md` | Every design decision, the alternatives rejected, and environment findings |
+| `docs/INTERVIEW-GUIDE.md` | How to discuss the project, the bugs found and how, and its real limits |
+| `docs/RESUME-BULLETS.md` | Bullet inventory tagged built / pending / needs-measurement |
 
 ## Licence
 

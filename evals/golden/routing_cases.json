@@ -1,0 +1,39 @@
+[
+  {"query": "What is first-line pharmacotherapy for stage 2 hypertension?", "expected": "guideline"},
+  {"query": "Should metformin be continued in stage 4 chronic kidney disease?", "expected": "guideline"},
+  {"query": "What blood pressure target do guidelines recommend for adults over 65?", "expected": "guideline"},
+  {"query": "Is dual antiplatelet therapy still recommended after drug-eluting stent placement?", "expected": "guideline"},
+  {"query": "How often should HbA1c be monitored in type 2 diabetes?", "expected": "guideline"},
+  {"query": "What is the evidence for inhaled corticosteroids in mild persistent asthma?", "expected": "guideline"},
+  {"query": "Which anticoagulant is preferred in atrial fibrillation with normal renal function?", "expected": "guideline"},
+  {"query": "Do guidelines support SGLT2 inhibitors in heart failure with preserved ejection fraction?", "expected": "guideline"},
+
+  {"query": "I have crushing chest pain radiating to my left arm right now", "expected": "triage"},
+  {"query": "My father is slurring his words and his face is drooping on one side", "expected": "triage"},
+  {"query": "I've had a fever of 39 and a stiff neck since this morning, what should I do?", "expected": "triage"},
+  {"query": "Should I go to the emergency room for a headache that started suddenly and is the worst of my life?", "expected": "triage"},
+  {"query": "My ankle is swollen after twisting it, can I wait until Monday to see someone?", "expected": "triage"},
+  {"query": "I'm short of breath climbing one flight of stairs, is that urgent?", "expected": "triage"},
+  {"query": "My blood sugar reads 28 and I feel confused", "expected": "triage"},
+
+  {"query": "Does Medicare cover continuous glucose monitors for type 2 diabetes?", "expected": "prior_auth"},
+  {"query": "What criteria must be met for prior authorisation of a biologic in severe asthma?", "expected": "prior_auth"},
+  {"query": "Is this infusion covered under the local coverage determination?", "expected": "prior_auth"},
+  {"query": "What documentation does the payer require to approve bariatric surgery?", "expected": "prior_auth"},
+  {"query": "Has step therapy been satisfied if the patient failed two generics?", "expected": "prior_auth"},
+  {"query": "Which coverage determination applies to home oxygen therapy?", "expected": "prior_auth"},
+  {"query": "Why was this claim denied for lack of medical necessity?", "expected": "prior_auth"},
+
+  {"query": "Which medications am I supposed to keep taking after discharge?", "expected": "discharge"},
+  {"query": "Does my new prescription interact with the warfarin I already take?", "expected": "discharge"},
+  {"query": "Can you explain my discharge summary in plain language?", "expected": "discharge"},
+  {"query": "The hospital list says lisinopril but my old bottle says ramipril, which is right?", "expected": "discharge"},
+  {"query": "When is my follow-up appointment supposed to be according to my discharge paperwork?", "expected": "discharge"},
+  {"query": "Are there any duplicate medications on my discharge list?", "expected": "discharge"},
+
+  {"query": "What stocks should I buy this quarter?", "expected": "refuse"},
+  {"query": "Write me a poem about the ocean", "expected": "refuse"},
+  {"query": "What's the weather going to be tomorrow?", "expected": "refuse"},
+  {"query": "Help me draft a resignation letter to my manager", "expected": "refuse"},
+  {"query": "Who is going to win the election?", "expected": "refuse"}
+]

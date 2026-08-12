@@ -34,3 +34,6 @@ ingest:  ## Download corpora and build the indexes
 
 eval:  ## Slow, CI-gated evaluation suite
 	uv run pytest -m eval
+
+eval-routing:  ## Score the labelled routing benchmark (one LLM call per case)
+	uv run python -m mesh.evals.routing
