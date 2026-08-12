@@ -4,13 +4,45 @@ A hierarchical multi-agent clinical assistant. A structured-output **supervisor*
 to one of four **isolated LangGraph specialist subgraphs**, over grounded public clinical corpora,
 behind input and output guardrail nodes.
 
+Rendered from the compiled graph (`mesh.get_graph().draw_mermaid()`), so it cannot
+drift from the code:
+
+```mermaid
+graph TD;
+	__start__([__start__]):::first
+	guard_in(guard_in)
+	supervisor(supervisor)
+	refuse(refuse)
+	clarify(clarify)
+	guard_out(guard_out)
+	guideline(guideline)
+	triage(triage)
+	prior_auth(prior_auth)
+	discharge(discharge)
+	__end__([__end__]):::last
+	__start__ --> guard_in;
+	guard_in -.-> refuse;
+	guard_in -.-> supervisor;
+	supervisor -.-> guideline;
+	supervisor -.-> triage;
+	supervisor -.-> prior_auth;
+	supervisor -.-> discharge;
+	supervisor -.-> clarify;
+	supervisor -.-> refuse;
+	guideline --> guard_out;
+	triage --> guard_out;
+	prior_auth --> guard_out;
+	discharge --> guard_out;
+	clarify --> guard_out;
+	refuse --> guard_out;
+	guard_out --> __end__;
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc
 ```
-__start__ → guard_in → supervisor ─┬→ guideline_sg   ─┐
-                                   ├→ triage_sg      ─┤
-                                   ├→ prior_auth_sg  ─┼→ guard_out → __end__
-                                   ├→ discharge_sg   ─┤
-                                   └→ refuse ────────┘
-```
+
+Note the edge from `guard_in` straight to `refuse`: a blocked query never reaches
+the supervisor, so the classifier never sees an injection payload.
 
 ## Read this first
 
@@ -33,13 +65,15 @@ for the full approved design.
 | Shared spine (models, state contract) | production | done |
 | Retrieval (hybrid BM25 + vector) | production | done |
 | Ingestion (PubMed + MedlinePlus) | production | done |
+| Guardrails (PHI, injection, citations) | production | done |
+| Mesh graph wiring | production | done |
 | Cross-encoder rerank | production | pending |
 | Supervisor + routing benchmark | production | routing policy done, LLM node pending |
 | Guideline copilot | production | pending |
-| Guardrail nodes + eval harness | production | pending |
+| Eval harness | production | pending |
 | Triage / prior-auth / discharge | demo | pending |
 
-66 tests passing, `ruff` and `mypy --strict` clean.
+108 tests passing, `ruff` and `mypy --strict` clean.
 
 ## Quick start
 

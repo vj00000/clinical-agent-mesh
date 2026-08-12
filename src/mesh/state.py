@@ -29,6 +29,14 @@ class MeshState(TypedDict):
     citations: list[Citation]
     trace_id: str
 
+    # Chunk ids the retriever returned this turn. guard_out checks citations
+    # against these, so a specialist cannot cite a chunk it never saw.
+    retrieved_ids: list[str]
+
+    # Audit trail of what the guards did: which PHI categories were stripped,
+    # which injection patterns fired, which citations failed. Never the PHI itself.
+    guard_flags: list[str]
+
 
 def new_state(query: str) -> MeshState:
     """Build the initial state for one turn through the mesh."""
@@ -39,4 +47,6 @@ def new_state(query: str) -> MeshState:
         answer="",
         citations=[],
         trace_id=str(uuid.uuid4()),
+        retrieved_ids=[],
+        guard_flags=[],
     )
