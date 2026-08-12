@@ -63,6 +63,7 @@ addopts = "-q --strict-markers"
 markers = [
     "llm: test performs a real LLM call (costs money, excluded from default run)",
     "eval: slow evaluation suite, CI-gated",
+    "integration: needs a running Chroma; skipped automatically when absent",
 ]
 
 [tool.ruff]
@@ -76,3 +77,8 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 python_version = "3.12"
 strict = true
 mypy_path = "src"
+
+# rank_bm25 ships no py.typed marker.
+[[tool.mypy.overrides]]
+module = ["rank_bm25.*"]
+ignore_missing_imports = true
