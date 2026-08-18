@@ -1,0 +1,23 @@
+run ./scripts/setup-mac.sh 
+
+set environment varian=ble in .env
+
+
+make check          lint + types + fast tests
+make test-network   tests against live PubMed / MedlinePlus
+make test-rerank    tests the real cross-encoder (needs the rerank extra)
+make up / make down start / stop Chroma and Postgres
+
+  If 'uv' is not found in a new terminal, add this to ~/.zshrc:
+    export PATH="$HOME/.local/bin:$PATH"
+
+
+ fix lint and syntax - uv run ruff check --fix src/mesh/demo.py
+
+when I basically write make build_guideline
+these run command the section under build_guideline in Makefile
+
+
+-> uv run ruff format src/mesh/agents/guideline.py
+-> uv run ruff check .
+uv run pytest tests/nodes/test_guideline.py -x -m todo

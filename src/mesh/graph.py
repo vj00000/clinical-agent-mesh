@@ -11,6 +11,7 @@ from typing import Any, Protocol
 from langgraph.graph import END, START, StateGraph
 
 from mesh.guardrails.nodes import guard_in, guard_out
+from mesh.retrieval.hybrid import RetrievalUnavailable
 from mesh.state import MeshState
 
 
@@ -24,9 +25,15 @@ class Node(Protocol):
 
     def __call__(self, state: MeshState) -> dict[str, Any]: ...
 
+
 OUT_OF_SCOPE_REFUSAL = (
     "I can only help with clinical questions grounded in the guideline, triage, "
     "coverage, and discharge sources I have access to."
+)
+
+RETRIEVER_REFUSAL = (
+    "I can't reach the clinical sources right now. Rather than answer from memory, "
+    "I'd rather tell you the evidence base is unavailable."
 )
 
 CLARIFY_PROMPT = (
@@ -53,6 +60,33 @@ def _after_guard_in(state: MeshState) -> str:
 def _after_supervisor(state: MeshState) -> str:
     route = state["route"]
     return route if route in {*_SPECIALIST_NAMES, "clarify"} else "refuse"
+
+
+def as_specialist(subgraph: Any) -> Node:
+    """Adapt a specialist subgraph to the mesh's state contract.
+
+    The subgraph receives only the quesry and returns only its three public. fields,
+    so its private working state can change without touching the parent graph.
+    """
+
+    def specialist(state: MeshState) -> dict[str, Any]:
+        try:
+            update = subgraph.invoke({"query": state["query"]})
+        except RetrievalUnavailable:
+            return {
+                "answer": RETRIEVER_REFUSAL,
+                "citations": [],
+                "route": "refuse",
+                "guard_flags": [*state["guard_flags"], "retriever_unavailable"],
+            }
+
+        return {
+            "answer": update["answer"],
+            "citations": update["citations"],
+            "retrieved_ids": update["retrieved_ids"],
+        }
+
+    return specialist
 
 
 def build_mesh(

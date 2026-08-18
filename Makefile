@@ -7,6 +7,18 @@ install:  ## Install dependencies into .venv
 	uv sync --extra postgres --extra observability
 
 up:  ## Start chroma + postgres
+	@command -v docker >/dev/null 2>&1 || { echo "Docker CLI not found. Install Docker Desktop, then rerun 'make up'."; exit 1; }
+	@if ! docker info >/dev/null 2>&1; then \
+		if [ "$$(uname -s)" = "Darwin" ] && command -v open >/dev/null 2>&1; then \
+			echo "Docker daemon is not running. Starting Docker Desktop..."; \
+			open -a Docker >/dev/null 2>&1 || true; \
+			for _ in $$(seq 1 30); do \
+				if docker info >/dev/null 2>&1; then break; fi; \
+				sleep 2; \
+			done; \
+		fi; \
+		docker info >/dev/null 2>&1 || { echo "Docker daemon is not running. Start Docker Desktop, then rerun 'make up'."; exit 1; }; \
+	fi
 	docker compose up -d
 
 down:  ## Stop services (volumes are preserved)
@@ -42,4 +54,4 @@ eval-routing:  ## Score the labelled routing benchmark (one LLM call per case)
 	uv run python -m mesh.evals.routing
 
 build-guideline:  ## Run the failing guideline-subgraph tests (your build)
-	uv run pytest tests/nodes/test_guideline.py -x
+	uv run pytest tests/nodes/test_guideline.py -x -m todo

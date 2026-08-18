@@ -20,7 +20,9 @@ from mesh.state import Citation
 
 # Excluded from the default run so `make check` stays green while this is
 # unimplemented. Run them with `make build-guideline`.
-pytestmark = pytest.mark.todo
+# pytestmark = pytest.mark.todo
+
+# uncomment above line to remove from default test suite
 
 # --- stubs --------------------------------------------------------------------
 
