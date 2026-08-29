@@ -111,3 +111,33 @@ def assess_urgency(text: str) -> TriageAssessment:
         level=Urgency.EMERGENCY if matched else Urgency.ROUTINE,
         matched=matched,
     )
+
+
+# Ascending severity. A tuple rather than the enum's own order, so adding the
+# URGENT tier the module docstring calls for is a one-line change here.
+_SEVERITY: tuple[Urgency, ...] = (Urgency.ROUTINE, Urgency.EMERGENCY)
+
+# Below this, there is not enough to assess. Deliberately generous: "chest hurts
+# when I breathe" is five words and worth one follow-up rather than a guess.
+MIN_DESCRIPTION_WORDS = 6
+
+
+def apply_urgency_floor(assessed: Urgency, *, floor: Urgency) -> Urgency:
+    """Take the higher of the model's assessment and the rules' floor.
+
+    The rules can only escalate. Nothing the model says downgrades a red flag, so
+    a prompt regression cannot quietly reassure someone into staying home.
+    """
+    return max(assessed, floor, key=_SEVERITY.index)
+
+
+def needs_more_detail(description: str, *, matched: list[str]) -> bool:
+    """Whether to ask one follow-up before assessing.
+
+    A fired red flag outranks any need for detail: someone describing crushing
+    chest pain gets an answer, not a questionnaire.
+    """
+    if matched:
+        return False
+
+    return len(description.split()) < MIN_DESCRIPTION_WORDS

@@ -43,10 +43,19 @@ def guard_in(state: MeshState) -> dict[str, Any]:
 # perfectly good question with a refusal.
 _UNCITED_ROUTES = frozenset({"refuse", "clarify"})
 
+# A red-flag escalation is deterministic: the rules fired, the model did not
+# assert it. It is exempt for the same reason a refusal is — it makes no claim
+# about the evidence — and it is a flag rather than a route so the supervisor's
+# routing vocabulary stays unchanged.
+#
+# Without this, a retrieval outage silently converts "call an ambulance" into
+# "I don't have the evidence", which is the worst output this system can produce.
+SAFETY_ESCALATION_FLAG = "safety_escalation"
+
 
 def guard_out(state: MeshState) -> dict[str, Any]:
     """Refuse rather than emit a clinical claim that cites nothing real."""
-    if state["route"] in _UNCITED_ROUTES:
+    if state["route"] in _UNCITED_ROUTES or SAFETY_ESCALATION_FLAG in state["guard_flags"]:
         return {"answer": state["answer"], "citations": state["citations"]}
 
     verdict = verify_citations(state["citations"], retrieved=set(state["retrieved_ids"]))

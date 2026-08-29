@@ -4,7 +4,12 @@ Nodes return only the state keys they change, which is what LangGraph merges.
 No LLM is involved in either node, so both are fully testable here.
 """
 
-from mesh.guardrails.nodes import UNGROUNDED_REFUSAL, guard_in, guard_out
+from mesh.guardrails.nodes import (
+    SAFETY_ESCALATION_FLAG,
+    UNGROUNDED_REFUSAL,
+    guard_in,
+    guard_out,
+)
 from mesh.state import Citation, new_state
 
 
@@ -105,3 +110,20 @@ def test_guard_out_does_not_demand_citations_from_a_refusal():
     update = guard_out(state)
 
     assert update["answer"] == "I can't help with that."
+
+
+def test_guard_out_does_not_demand_citations_from_a_safety_escalation():
+    """A red-flag escalation is a rule firing, not a claim derived from evidence.
+
+    Demanding a citation for it means a retrieval outage silently converts
+    "call an ambulance" into "I don't have the evidence" — the worst output
+    this system can produce.
+    """
+    state = new_state("crushing chest pain")
+    state["route"] = "triage"
+    state["answer"] = "This needs emergency care now."
+    state["guard_flags"] = [SAFETY_ESCALATION_FLAG]
+
+    update = guard_out(state)
+
+    assert update["answer"] == "This needs emergency care now."

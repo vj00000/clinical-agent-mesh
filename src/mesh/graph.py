@@ -43,6 +43,10 @@ CLARIFY_PROMPT = (
 
 _SPECIALIST_NAMES = ("guideline", "triage", "prior_auth", "discharge")
 
+# The three fields every specialist returns, stated once rather than repeated in
+# each one.
+_SPECIALIST_FIELDS = ("answer", "citations", "retrieved_ids")
+
 
 def _refuse(state: MeshState) -> dict[str, Any]:
     return {"answer": OUT_OF_SCOPE_REFUSAL, "citations": [], "route": "refuse"}
@@ -65,14 +69,17 @@ def _after_supervisor(state: MeshState) -> str:
 def as_specialist(subgraph: Any) -> Node:
     """Adapt a specialist subgraph to the mesh's state contract.
 
-    The subgraph receives only the quesry and returns only its three public. fields,
-    so its private working state can change without touching the parent graph.
+    The subgraph receives only the query and returns only its public fields, so its
+    private working state can change without touching the parent graph.
     """
 
     def specialist(state: MeshState) -> dict[str, Any]:
         try:
-            update = subgraph.invoke({"query": state["query"]})
+            result = subgraph.invoke({"query": state["query"]})
         except RetrievalUnavailable:
+            # Routed to refuse so guard_out skips the citation check: a refusal
+            # asserts nothing clinical, so demanding citations from it would
+            # replace a usable message with a second refusal.
             return {
                 "answer": RETRIEVER_REFUSAL,
                 "citations": [],
@@ -80,11 +87,17 @@ def as_specialist(subgraph: Any) -> Node:
                 "guard_flags": [*state["guard_flags"], "retriever_unavailable"],
             }
 
-        return {
-            "answer": update["answer"],
-            "citations": update["citations"],
-            "retrieved_ids": update["retrieved_ids"],
-        }
+        update: dict[str, Any] = {field: result[field] for field in _SPECIALIST_FIELDS}
+
+        # A specialist may also hand back a route (a triage follow-up is a
+        # clarifying question) or guard flags (a red-flag escalation). Both change
+        # what guard_out does, so they have to cross the boundary. Nothing else does.
+        if result.get("route"):
+            update["route"] = result["route"]
+        if result.get("guard_flags"):
+            update["guard_flags"] = [*state["guard_flags"], *result["guard_flags"]]
+
+        return update
 
     return specialist
 
