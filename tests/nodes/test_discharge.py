@@ -9,11 +9,11 @@ from typing import Any
 import pytest
 
 from mesh.agents.discharge import (
-    INTERACTION_HEADING,
     Interaction,
     Medication,
     build_discharge_subgraph,
 )
+from mesh.agents.discharge_rules import INTERACTION_HEADING
 from mesh.retrieval.chunking import Chunk
 from mesh.retrieval.hybrid import RetrievalUnavailable
 from mesh.state import Citation
