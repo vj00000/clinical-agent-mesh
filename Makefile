@@ -1,4 +1,4 @@
-.PHONY: help install up down logs test lint types check ingest eval build-openfda
+.PHONY: help install up down logs test lint types check ingest eval
 
 help:
 	@grep -E '^[a-z-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -52,6 +52,3 @@ eval:  ## Slow, CI-gated evaluation suite
 
 eval-routing:  ## Score the labelled routing benchmark (one LLM call per case)
 	uv run python -m mesh.evals.routing
-
-build-openfda:  ## Run the failing openFDA parser tests (your build)
-	uv run pytest tests/unit/test_sources_openfda.py -x -m todo
