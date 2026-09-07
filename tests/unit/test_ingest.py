@@ -8,7 +8,12 @@ from collections.abc import Sequence
 
 from mesh.retrieval.chunking import Chunk
 from mesh.retrieval.documents import Document
-from mesh.retrieval.ingest import dedupe_documents, ingest_documents
+from mesh.retrieval.ingest import (
+    COLLECTION_BY_ROUTE,
+    CORPORA,
+    dedupe_documents,
+    ingest_documents,
+)
 
 
 class RecordingStore:
@@ -122,3 +127,35 @@ def test_ingesting_nothing_does_not_call_the_embedder():
 
     assert report.chunks == 0
     assert embedder.calls == 0
+
+
+def test_every_specialist_route_maps_to_a_collection():
+    """Reaches for the private name on purpose. This is the contract between the
+    mesh's routes and the corpora, and adding a fifth specialist without giving
+    it something to retrieve from should break loudly here.
+    """
+    from mesh.graph import _SPECIALIST_NAMES
+
+    assert set(COLLECTION_BY_ROUTE) == set(_SPECIALIST_NAMES)
+
+
+def test_each_corpus_fills_a_distinct_collection():
+    collections = [corpus.collection for corpus in CORPORA]
+
+    assert len(collections) == len(set(collections))
+
+
+def test_no_corpus_fills_a_collection_nothing_reads():
+    """Embedding text no agent will ever retrieve is money spent for nothing."""
+    assert {corpus.collection for corpus in CORPORA} <= set(COLLECTION_BY_ROUTE.values())
+
+
+def test_coverage_is_the_only_collection_still_unbuilt():
+    """The Medicare Coverage Database publishes bulk downloads rather than a
+    queryable API, so `coverage` cannot follow the fetch-on-demand pattern the
+    other three use. Named here so the gap cannot be quietly forgotten: when the
+    CMS corpus lands this test fails, and gets deleted.
+    """
+    built = {corpus.collection for corpus in CORPORA}
+
+    assert set(COLLECTION_BY_ROUTE.values()) - built == {"coverage"}

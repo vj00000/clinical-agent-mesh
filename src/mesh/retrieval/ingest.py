@@ -6,6 +6,7 @@ and so the same code path serves any corpus.
 
 import sys
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from typing import Protocol
 
 import httpx
@@ -16,7 +17,7 @@ from mesh.models.providers import build_embeddings
 from mesh.retrieval.chunking import Chunk, chunk_document
 from mesh.retrieval.dense import ChromaDense
 from mesh.retrieval.documents import Document
-from mesh.retrieval.sources import fetch_medlineplus, fetch_pubmed
+from mesh.retrieval.sources import fetch_medlineplus, fetch_openfda_labels, fetch_pubmed
 
 # Takes list, not Sequence: LangChain's embed_documents is typed for list[str],
 # and callable parameters are contravariant, so a Sequence-typed alias rejects it.
@@ -34,7 +35,48 @@ GUIDELINE_TOPICS = (
     "chronic kidney disease",
 )
 
-GUIDELINE_COLLECTION = "guideline"
+# Symptoms the triage specialist is expected to field. MedlinePlus only, and
+# deliberately: triage answers in the register a worried person reads, while
+# PubMed abstracts are written for clinicians.
+TRIAGE_SYMPTOMS = (
+    "chest pain",
+    "shortness of breath",
+    "headache",
+    "fever",
+    "abdominal pain",
+    "dizziness",
+)
+
+# Medications that turn up most often in discharge summaries, chosen so the
+# interaction lookup has real pairs to find.
+DISCHARGE_DRUGS = (
+    "warfarin",
+    "metformin",
+    "lisinopril",
+    "atorvastatin",
+    "amoxicillin",
+    "ibuprofen",
+)
+
+# Which collection each specialist retrieves from. The names differ on purpose:
+# a collection is named for what it holds, an agent for what it does. The
+# composition root reads this to build each agent its own retriever.
+COLLECTION_BY_ROUTE = {
+    "guideline": "guideline",
+    "triage": "triage",
+    "prior_auth": "coverage",
+    "discharge": "drug",
+}
+
+CorpusBuilder = Callable[[httpx.Client], list[Document]]
+
+
+@dataclass(frozen=True)
+class Corpus:
+    """One collection and the function that fills it."""
+
+    collection: str
+    build: CorpusBuilder
 
 
 class ChunkStore(Protocol):
@@ -112,6 +154,38 @@ def build_guideline_corpus(client: httpx.Client, *, per_topic: int = 5) -> list[
     return dedupe_documents(documents)
 
 
+def build_triage_corpus(client: httpx.Client, *, per_symptom: int = 5) -> list[Document]:
+    """Fetch patient-facing symptom pages for the triage specialist."""
+    documents: list[Document] = []
+
+    for symptom in TRIAGE_SYMPTOMS:
+        print(f"  fetching {symptom}...", flush=True)
+        documents.extend(fetch_medlineplus(symptom, limit=per_symptom, client=client))
+
+    return dedupe_documents(documents)
+
+
+def build_drug_corpus(client: httpx.Client, *, per_drug: int = 3) -> list[Document]:
+    """Fetch openFDA labels for the medications discharge summaries mention most."""
+    documents: list[Document] = []
+
+    for drug in DISCHARGE_DRUGS:
+        print(f"  fetching {drug}...", flush=True)
+        documents.extend(fetch_openfda_labels(drug, limit=per_drug, client=client))
+
+    return dedupe_documents(documents)
+
+
+# `coverage` is absent: the Medicare Coverage Database publishes bulk downloads
+# rather than a queryable API, so prior_auth cannot follow the fetch-on-demand
+# pattern the other three use. Until it lands, that route retrieves nothing.
+CORPORA = (
+    Corpus(collection=COLLECTION_BY_ROUTE["guideline"], build=build_guideline_corpus),
+    Corpus(collection=COLLECTION_BY_ROUTE["triage"], build=build_triage_corpus),
+    Corpus(collection=COLLECTION_BY_ROUTE["discharge"], build=build_drug_corpus),
+)
+
+
 def main() -> None:
     """Entry point for `make ingest`."""
     try:
@@ -124,25 +198,31 @@ def main() -> None:
         raise SystemExit(1) from None
 
     embeddings = build_embeddings(settings)
-    store = ChromaDense(
-        host=settings.chroma_host,
-        port=settings.chroma_port,
-        collection=GUIDELINE_COLLECTION,
-        embed_query=embeddings.embed_query,
-    )
 
-    print(f"Fetching corpus for {len(GUIDELINE_TOPICS)} topics...")
     with httpx.Client(timeout=30.0) as client:
-        documents = build_guideline_corpus(client)
-    print(f"Fetched {len(documents)} unique documents.")
+        for corpus in CORPORA:
+            print(f"\n[{corpus.collection}] fetching...")
+            documents = corpus.build(client)
+            print(f"  {len(documents)} unique documents")
 
-    print("Chunking and embedding...")
-    report = ingest_documents(documents, store=store, embed=embeddings.embed_documents)
+            store = ChromaDense(
+                host=settings.chroma_host,
+                port=settings.chroma_port,
+                collection=corpus.collection,
+                embed_query=embeddings.embed_query,
+            )
+            report = ingest_documents(documents, store=store, embed=embeddings.embed_documents)
 
-    print(
-        f"Ingested {report.documents} documents into {report.chunks} chunks "
-        f"({report.skipped} skipped, no usable text)."
-    )
+            print(
+                f"  ingested {report.documents} documents into {report.chunks} chunks "
+                f"({report.skipped} skipped, no usable text)"
+            )
+
+    # Said out loud rather than left to be discovered when a route answers
+    # "insufficient evidence" to everything.
+    missing = sorted(set(COLLECTION_BY_ROUTE.values()) - {c.collection for c in CORPORA})
+    if missing:
+        print(f"\nNot built: {', '.join(missing)}. Routes reading them find an empty index.")
 
 
 if __name__ == "__main__":
