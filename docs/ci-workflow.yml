@@ -1,0 +1,79 @@
+# CI workflow (not yet active)
+
+# This is the real workflow, parked here because the token used to push
+# lacked GitHub's `workflow` scope, which is required to write anything
+# under .github/workflows/. Nothing about the content needs changing.
+#
+# To activate, either:
+#   1. git mv docs/ci-workflow.yml .github/workflows/ci.yml && git commit && git push
+#      (needs a token with the `workflow` scope, or an SSH key on this account)
+#   2. Paste it into GitHub: Add file -> Create new file ->
+#      path .github/workflows/ci.yml
+#
+# The nightly eval job also needs OPENAI_API_KEY under
+# Settings -> Secrets and variables -> Actions.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  schedule:
+    # Nightly, so the eval gate catches drift without charging every PR.
+    - cron: "0 3 * * *"
+
+jobs:
+  check:
+    name: lint, types, fast tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.8.17"
+          enable-cache: true
+      - run: uv sync --frozen --extra postgres
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy src
+      # No key, no network, no Chroma. If this job ever needs one of those,
+      # something that should have been injected was imported instead.
+      - run: uv run pytest
+
+  integration:
+    name: retrieval against real Chroma
+    runs-on: ubuntu-latest
+    services:
+      chroma:
+        image: chromadb/chroma:1.0.15
+        ports:
+          - 8001:8000
+        env:
+          IS_PERSISTENT: "TRUE"
+          ANONYMIZED_TELEMETRY: "FALSE"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.8.17"
+          enable-cache: true
+      - run: uv sync --frozen --extra postgres
+      - run: uv run pytest -m integration
+
+  evals:
+    name: golden set (nightly, gated)
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.8.17"
+      - run: uv sync --frozen --extra postgres
+      # Exits non-zero below threshold, which is what makes this a gate rather
+      # than a report. Needs the key and a populated Chroma, so it is nightly
+      # rather than per-PR: every run costs money.
+      - run: uv run python -m mesh.evals.harness
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

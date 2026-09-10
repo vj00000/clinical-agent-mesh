@@ -150,6 +150,23 @@ in `src/mesh/evals/harness.py:THRESHOLDS`, and the failure names the metric.
 | `evals/golden/` | 64 labelled mesh cases, 33 routing cases |
 | `evals/redteam/` | 18 adversarial cases |
 
+## 7a. CI is written but not switched on
+
+`docs/ci-workflow.yml` is the real workflow. It is parked in `docs/` because the
+token used for the final push lacked GitHub's `workflow` scope, which is
+required to write under `.github/workflows/`. The content is finished and
+YAML-valid; activating it is a move, not an edit:
+
+```bash
+mkdir -p .github/workflows
+git mv docs/ci-workflow.yml .github/workflows/ci.yml
+git commit -m "Activate CI" && git push     # token needs the `workflow` scope
+```
+
+Or paste it into GitHub's web editor at `.github/workflows/ci.yml`. Then add
+`OPENAI_API_KEY` under Settings → Secrets and variables → Actions, which the
+nightly eval job needs.
+
 ## 8. Things I would do next, in order
 
 1. Run `make eval`, fix whatever the prompts get wrong, fill in the numbers.
