@@ -18,10 +18,6 @@ from mesh.retrieval.chunking import Chunk
 from mesh.retrieval.hybrid import RetrievalUnavailable
 from mesh.state import Citation
 
-# Excluded from the default run so `make check` stays green while this is
-# unimplemented. Run them with `make build-guideline`.
-# pytestmark = pytest.mark.todo
-
 # uncomment above line to remove from default test suite
 
 # --- stubs --------------------------------------------------------------------
@@ -72,9 +68,7 @@ class ScriptedModel:
     def __call__(self, prompt: str, chunks: list[Chunk]) -> tuple[str, list[Citation]]:
         answer, cited = self.script[min(self.calls, len(self.script) - 1)]
         self.calls += 1
-        return answer, [
-            Citation(chunk_id=cid, source="cdc-htn", quote="...") for cid in cited
-        ]
+        return answer, [Citation(chunk_id=cid, source="cdc-htn", quote="...") for cid in cited]
 
 
 def _planner(sub_questions: list[str]):
@@ -118,9 +112,7 @@ def test_a_simple_query_produces_one_sub_question():
 def test_each_sub_question_is_retrieved_separately():
     """A multi-part question retrieves badly as one string."""
     retriever = StubRetriever({"first-line therapy?": ["c1"], "renal dosing?": ["c9"]})
-    subgraph = _build(
-        plan=_planner(["first-line therapy?", "renal dosing?"]), retriever=retriever
-    )
+    subgraph = _build(plan=_planner(["first-line therapy?", "renal dosing?"]), retriever=retriever)
 
     _run(subgraph)
 

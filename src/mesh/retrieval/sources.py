@@ -8,12 +8,23 @@ import json
 from xml.etree import ElementTree
 
 import httpx
+from pydantic import BaseModel, Field
 
 from mesh.retrieval.documents import Document, clean_text
 
 PUBMED_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 MEDLINEPLUS_URL = "https://wsearch.nlm.nih.gov/ws/query"
 OPENFDA_LABEL_URL = "https://api.fda.gov/drug/label.json"
+CMS_COVERAGE_BASE = "https://api.coverage.cms.gov/v1/reports"
+
+# The two keyless CMS coverage report endpoints. Their sibling /v1/data/ routes
+# return the full policy text but require a licence token (AMA CPT, ADA CDT,
+# AHA UB-04), so what can be ingested freely is the policy index, not the
+# criteria. See docs/DECISIONS.md.
+CMS_REPORTS = (
+    ("NCD", "national-coverage-ncd"),
+    ("LCD", "local-coverage-final-lcds"),
+)
 
 # Label sections a discharge summary actually draws on. A full SPL label runs to
 # dozens of fields written for prescribers; embedding all of it buries the four
@@ -141,23 +152,57 @@ def parse_pubmed_articles(xml: str) -> list[Document]:
     return documents
 
 
-def parse_openfda_interactions(payload: str) -> list[str]:
-    """Pull the interaction notes out of a label response.
+class InteractionNote(BaseModel):
+    """One interaction paragraph, with the label record it came from.
+
+    The id travels with the text because the discharge specialist cites these
+    warnings, and a citation without provenance is exactly what guard_out exists
+    to reject.
+    """
+
+    label_id: str = Field(min_length=1)
+    text: str = Field(min_length=1)
+
+
+def parse_openfda_interaction_notes(payload: str) -> list[InteractionNote]:
+    """Pull the interaction notes out of a label response, with provenance.
 
     A label with no `drug_interactions` section yields nothing, rather than a
     note saying there are no interactions. "This label does not list
     interactions" and "this drug has no interactions" are different claims, and
     only the first one is true.
     """
-    notes: list[str] = []
+    notes: list[InteractionNote] = []
 
-    for record in json.loads(payload).get("results", []):
+    for ordinal, record in enumerate(json.loads(payload).get("results", [])):
+        label_id = record.get("id") or f"label-{ordinal}"
         for section in record.get("drug_interactions", []):
             cleaned = clean_text(section)
             if cleaned:
-                notes.append(cleaned)
+                notes.append(InteractionNote(label_id=label_id, text=cleaned))
 
     return notes
+
+
+def parse_openfda_interactions(payload: str) -> list[str]:
+    """The interaction notes as bare text, without their provenance."""
+    return [note.text for note in parse_openfda_interaction_notes(payload)]
+
+
+def fetch_openfda_interaction_notes(
+    drug: str, *, limit: int, client: httpx.Client
+) -> list[InteractionNote]:
+    """Fetch the interaction sections of one drug's labels."""
+    response = client.get(
+        OPENFDA_LABEL_URL,
+        params={"search": f'openfda.generic_name:"{drug}"', "limit": limit},
+    )
+    if response.status_code == httpx.codes.NOT_FOUND:
+        return []
+
+    response.raise_for_status()
+
+    return parse_openfda_interaction_notes(response.text)
 
 
 def parse_openfda_labels(payload: str, *, drug: str) -> list[Document]:
@@ -211,3 +256,54 @@ def fetch_openfda_labels(drug: str, *, limit: int, client: httpx.Client) -> list
     response.raise_for_status()
 
     return parse_openfda_labels(response.text, drug=drug)
+
+
+def parse_cms_coverage(payload: str, *, document_type: str) -> list[Document]:
+    """Turn a CMS coverage report into documents, one per policy.
+
+    Each document is the policy's identity -- what it covers, who issued it,
+    when it took effect -- not its criteria. The criteria endpoints sit behind a
+    licence token, so this corpus can tell you which policy governs a request
+    and cannot tell you whether the request meets it. That limit is the point of
+    the `unresolved` mark in the prior-auth criteria reader.
+    """
+    documents: list[Document] = []
+
+    for record in json.loads(payload).get("data", []):
+        title = clean_text(str(record.get("title", "")))
+        display_id = str(record.get("document_display_id", "")).strip()
+        if not title or not display_id:
+            continue
+
+        parts = [f"{document_type} {display_id}: {title}"]
+        for label, key in (
+            ("contractor", "contractor_name_type"),
+            ("effective date", "effective_date"),
+            ("status", "note"),
+        ):
+            value = clean_text(str(record.get(key, "")))
+            if value:
+                parts.append(f"{label}: {value}")
+
+        documents.append(
+            Document(
+                doc_id=f"cms:{display_id}",
+                source="cms-coverage",
+                title=title,
+                text=". ".join(parts),
+            )
+        )
+
+    return documents
+
+
+def fetch_cms_coverage(client: httpx.Client, *, limit: int) -> list[Document]:
+    """Fetch the keyless CMS coverage policy index -- NCDs and final LCDs."""
+    documents: list[Document] = []
+
+    for document_type, report in CMS_REPORTS:
+        response = client.get(f"{CMS_COVERAGE_BASE}/{report}")
+        response.raise_for_status()
+        documents.extend(parse_cms_coverage(response.text, document_type=document_type)[:limit])
+
+    return documents

@@ -1,4 +1,23 @@
 services:
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      # Service names, not localhost: inside the compose network the other
+      # containers are reachable by name, and Chroma's own port is 8000 even
+      # though it is published on 8001 to the host.
+      CHROMA_HOST: chroma
+      CHROMA_PORT: "8000"
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?set OPENAI_API_KEY in .env}
+      MESH_CHAT_MODEL: ${MESH_CHAT_MODEL:-gpt-5-nano}
+    depends_on:
+      chroma:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
   chroma:
     image: chromadb/chroma:1.0.15
     ports:

@@ -180,22 +180,36 @@ routing benchmark is 33 cases against a target of 100. Don't dress this up.
 
 ## 6. What is actually built — say this accurately
 
-**Built and tested (124 tests, ruff and mypy --strict clean):**
+**Built and verified (273 fast tests, 18 integration, 8 network; ruff, ruff format
+and mypy --strict clean):**
 shared spine and state contract · chunking with content-addressed ids · BM25 ·
-reciprocal rank fusion · Chroma dense adapter · hybrid retriever with fail-closed
-behaviour · ingestion from PubMed and MedlinePlus · PHI redaction · injection
-detection · citation verification · guard_in/guard_out nodes · compiled mesh
-graph with conditional routing · supervisor node with confidence gate and
-fail-closed error handling · routing benchmark scorer with confusion matrix ·
-Docker Compose stack
+reciprocal rank fusion · Chroma dense adapter with corpus enumeration · hybrid
+retriever with fail-closed behaviour · cross-encoder rerank · ingestion over four
+corpora (MedlinePlus, PubMed, openFDA, CMS) with one collection per agent · PHI
+redaction · injection detection including persona jailbreaks · citation
+verification · guard_in/guard_out nodes with the safety-escalation exemption ·
+compiled mesh graph · supervisor with confidence gate and fail-closed error
+handling · **all four specialist subgraphs** · the specialist adapter · the
+composition root · eval metrics, golden set (64 cases), red-team suite (18 cases) ·
+FastAPI with JSON and SSE endpoints · Postgres-capable checkpointer wiring ·
+Dockerfile · GitHub Actions with a nightly gated eval job
 
-**Not built:** guideline subgraph (plan → retrieve → rerank → draft → verify →
-revise) · cross-encoder rerank · faithfulness and citation-accuracy evals · red-team
-suite · Langfuse tracing · cost and latency benchmarks · Postgres checkpointer
-wiring · FastAPI/SSE layer · the three thin specialists · CI
+**Not built:** Langfuse tracing · cost and latency benchmarks · token-level
+streaming · the dense-only A/B baseline that a retrieval-recall claim would need ·
+context-recall labelling in the golden set
 
-**No metrics exist yet.** Nothing has been measured because no eval has been run
-against a live model. If asked for numbers, say that — do not estimate.
+**No metrics exist yet, and this is the thing to say first.** The harness is
+built, tested and CI-gated, but it has never been run: there was no API key on
+the machine this was built on. The six model-backed prompt factories have
+therefore never executed against a real model either. If asked for numbers, say
+exactly that — the harness is one `make eval` away from producing them, and
+guessing is how you lose the room.
+
+If pressed on why that is acceptable: the parts that can be measured without a
+key *have* been. Every injection and PHI red-team case runs in the ordinary test
+suite. The whole mesh runs end to end in an integration test with a stub model
+against real Chroma, which proves the wiring. What is missing is prompt quality,
+and that is honestly what a key buys.
 
 ## 7. Tone notes
 

@@ -1,4 +1,4 @@
-.PHONY: help install up down logs test lint types check ingest eval
+.PHONY: help install up down logs test test-integration lint types check ingest eval ask
 
 help:
 	@grep -E '^[a-z-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
@@ -27,8 +27,11 @@ down:  ## Stop services (volumes are preserved)
 logs:  ## Tail service logs
 	docker compose logs -f
 
-test:  ## Fast tests: no LLM calls, no network
+test:  ## Fast tests: no LLM calls, no network, no Chroma
 	uv run pytest
+
+test-integration:  ## Tests against a running Chroma (needs: make up)
+	uv run pytest -m integration
 
 test-network:  ## Tests that call the live public clinical APIs
 	uv run pytest -m network
@@ -47,8 +50,11 @@ check: lint types test  ## Everything CI runs on a pull request
 ingest:  ## Download corpora and build the indexes
 	uv run python -m mesh.retrieval.ingest
 
-eval:  ## Slow, CI-gated evaluation suite
-	uv run pytest -m eval
+eval:  ## Score the golden set through the whole mesh; fails below threshold
+	uv run python -m mesh.evals.harness
 
 eval-routing:  ## Score the labelled routing benchmark (one LLM call per case)
 	uv run python -m mesh.evals.routing
+
+ask:  ## Put one question through the mesh: make ask q="..."
+	uv run python -m mesh.ask $(q)

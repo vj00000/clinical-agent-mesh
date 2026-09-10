@@ -6,13 +6,32 @@ key.
 """
 
 import contextlib
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any
 
 import chromadb
 
 from mesh.retrieval.chunking import Chunk
 
 Embedder = Callable[[str], list[float]]
+
+
+def _to_chunks(result: Mapping[str, Any]) -> dict[str, Chunk]:
+    """Rebuild Chunks from a Chroma get() response, keyed by id."""
+    documents = result.get("documents") or []
+    metadatas = result.get("metadatas") or []
+
+    by_id: dict[str, Chunk] = {}
+    for chunk_id, text, metadata in zip(result["ids"], documents, metadatas, strict=True):
+        meta = metadata or {}
+        by_id[chunk_id] = Chunk(
+            chunk_id=chunk_id,
+            source=str(meta.get("source", "")),
+            text=text or "",
+            ordinal=int(meta.get("ordinal", 0)),
+        )
+
+    return by_id
 
 
 class ChromaDense:
@@ -65,21 +84,27 @@ class ChromaDense:
         if not chunk_ids:
             return []
 
-        result = self._collection.get(ids=list(chunk_ids))
-        documents = result.get("documents") or []
-        metadatas = result.get("metadatas") or []
-
-        by_id: dict[str, Chunk] = {}
-        for chunk_id, text, metadata in zip(result["ids"], documents, metadatas, strict=True):
-            meta = metadata or {}
-            by_id[chunk_id] = Chunk(
-                chunk_id=chunk_id,
-                source=str(meta.get("source", "")),
-                text=text or "",
-                ordinal=int(meta.get("ordinal", 0)),  # type: ignore[arg-type]
-            )
+        by_id = _to_chunks(self._collection.get(ids=list(chunk_ids)))
 
         return [by_id[chunk_id] for chunk_id in chunk_ids if chunk_id in by_id]
+
+    def all_chunks(self, *, batch_size: int = 500) -> list[Chunk]:
+        """Every chunk in the collection, in whatever order Chroma returns them.
+
+        BM25 scores a query against the whole corpus held in memory, so the
+        lexical index cannot be built from search results the way the dense half
+        is queried -- it needs the corpus itself. Paged rather than fetched in
+        one call: a collection big enough to matter is a response big enough to
+        hurt.
+        """
+        collection = self._collection
+        chunks: list[Chunk] = []
+
+        for offset in range(0, collection.count(), batch_size):
+            page = collection.get(limit=batch_size, offset=offset)
+            chunks.extend(_to_chunks(page).values())
+
+        return chunks
 
     def search(self, query: str, *, top_k: int = 20) -> list[str]:
         collection = self._collection

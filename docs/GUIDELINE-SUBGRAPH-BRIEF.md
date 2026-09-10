@@ -1,3 +1,9 @@
+> **Superseded 2026-09-10.** This was a build brief handed over while the
+> guideline subgraph was unimplemented. It is now built (`src/mesh/agents/guideline.py`),
+> and its 12 tests run in the default suite. Kept because it records the reasoning
+> behind the node boundaries and the bounded revise loop, which the code assumes
+> but does not explain at this length.
+
 # Build Brief — Guideline Copilot Subgraph
 
 This is your build. The tests are written and failing; make them pass.

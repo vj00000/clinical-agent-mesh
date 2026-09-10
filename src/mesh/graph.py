@@ -106,8 +106,15 @@ def build_mesh(
     *,
     supervisor: Node,
     specialists: Mapping[str, Node],
+    checkpointer: Any = None,
 ) -> Any:
-    """Compile the mesh. `specialists` maps each route name to its node or subgraph."""
+    """Compile the mesh. `specialists` maps each route name to its node or subgraph.
+
+    With a checkpointer, each `thread_id` gets a durable state that survives a
+    restart. Note what that does and does not buy today: turns are persisted,
+    but no specialist reads prior turns, so this is durability rather than
+    conversational memory. Saying otherwise would oversell it.
+    """
     missing = set(_SPECIALIST_NAMES) - set(specialists)
     if missing:
         raise ValueError(f"missing specialists: {sorted(missing)}")
@@ -136,4 +143,4 @@ def build_mesh(
         builder.add_edge(name, "guard_out")
     builder.add_edge("guard_out", END)
 
-    return builder.compile()
+    return builder.compile(checkpointer=checkpointer)

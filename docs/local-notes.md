@@ -1,3 +1,8 @@
+# Local notes (personal scratchpad)
+
+Machine-specific commands kept from the build. Not part of the project's
+documentation — see `HANDOVER.md` to actually run this.
+
 run ./scripts/setup-mac.sh 
 
 set environment varian=ble in .env

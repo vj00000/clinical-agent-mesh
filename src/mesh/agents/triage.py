@@ -16,8 +16,11 @@ detail. Recorded in DECISIONS.md.
 from collections.abc import Callable
 from typing import Any, Protocol, TypedDict
 
+from langchain_core.language_models import BaseChatModel
 from langgraph.graph import END, START, StateGraph
+from pydantic import BaseModel
 
+from mesh.agents.citing import ClaimCitation, format_chunks, to_citations
 from mesh.agents.triage_rules import (
     Urgency,
     apply_urgency_floor,
@@ -143,3 +146,39 @@ def build_triage_subgraph(
     builder.add_edge("advise", END)
 
     return builder.compile()
+
+
+ADVISER_PROMPT = """You advise someone describing symptoms, using only the passages given.
+
+Each passage is prefixed with its chunk id. Cite the chunk id behind every claim and
+quote the sentence you relied on. If the passages do not cover what they described,
+say so rather than answering from memory.
+
+Report the urgency you actually read in the description: `emergency` if it needs care
+now, `routine` otherwise. Deterministic red-flag rules run alongside you and can raise
+your reading but never lower it, so do not inflate -- an honest read is more useful
+than a cautious one."""
+
+
+class SymptomAdvice(BaseModel):
+    answer: str
+    citations: list[ClaimCitation]
+    urgency: Urgency
+
+
+def build_adviser(model: BaseChatModel) -> Adviser:
+    """Wrap a chat model as the triage specialist's adviser."""
+    structured = model.with_structured_output(SymptomAdvice)
+
+    def advise(query: str, chunks: list[Chunk]) -> tuple[str, list[Citation], Urgency]:
+        result = structured.invoke(
+            [
+                ("system", ADVISER_PROMPT),
+                ("human", f"Description: {query}\n\nPassages:\n{format_chunks(chunks)}"),
+            ]
+        )
+        advice = SymptomAdvice.model_validate(result)
+
+        return advice.answer, to_citations(advice.citations, chunks), advice.urgency
+
+    return advise

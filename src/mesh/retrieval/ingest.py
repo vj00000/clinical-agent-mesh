@@ -17,7 +17,12 @@ from mesh.models.providers import build_embeddings
 from mesh.retrieval.chunking import Chunk, chunk_document
 from mesh.retrieval.dense import ChromaDense
 from mesh.retrieval.documents import Document
-from mesh.retrieval.sources import fetch_medlineplus, fetch_openfda_labels, fetch_pubmed
+from mesh.retrieval.sources import (
+    fetch_cms_coverage,
+    fetch_medlineplus,
+    fetch_openfda_labels,
+    fetch_pubmed,
+)
 
 # Takes list, not Sequence: LangChain's embed_documents is typed for list[str],
 # and callable parameters are contravariant, so a Sequence-typed alias rejects it.
@@ -176,12 +181,23 @@ def build_drug_corpus(client: httpx.Client, *, per_drug: int = 3) -> list[Docume
     return dedupe_documents(documents)
 
 
-# `coverage` is absent: the Medicare Coverage Database publishes bulk downloads
-# rather than a queryable API, so prior_auth cannot follow the fetch-on-demand
-# pattern the other three use. Until it lands, that route retrieves nothing.
+def build_coverage_corpus(client: httpx.Client, *, per_report: int = 150) -> list[Document]:
+    """Fetch the CMS coverage policy index for the prior-auth specialist.
+
+    Titles and identifiers only. The endpoints carrying the criteria text need a
+    licence token, so this corpus says which policy governs a request and not
+    whether the request meets it -- which is why prior_auth will often answer
+    `more_info`. That is the system reporting its evidence honestly.
+    """
+    print("  fetching CMS coverage index...", flush=True)
+
+    return dedupe_documents(fetch_cms_coverage(client, limit=per_report))
+
+
 CORPORA = (
     Corpus(collection=COLLECTION_BY_ROUTE["guideline"], build=build_guideline_corpus),
     Corpus(collection=COLLECTION_BY_ROUTE["triage"], build=build_triage_corpus),
+    Corpus(collection=COLLECTION_BY_ROUTE["prior_auth"], build=build_coverage_corpus),
     Corpus(collection=COLLECTION_BY_ROUTE["discharge"], build=build_drug_corpus),
 )
 

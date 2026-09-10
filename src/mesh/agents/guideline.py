@@ -33,7 +33,7 @@ ContradictionDetector = Callable[[str, list[Chunk]], str | None]
 
 
 class Retriever(Protocol):
-    def search(self, query: str, *, tok_k: int = 200) -> list[str]: ...
+    def search(self, query: str, *, top_k: int = 20) -> list[str]: ...
 
 
 class ChunkStore(Protocol):

@@ -13,11 +13,14 @@ retrieved chunk supports and refuse the whole answer.
 from collections.abc import Callable
 from typing import Any, Protocol, TypedDict
 
+from langchain_core.language_models import BaseChatModel
 from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel, Field
 
+from mesh.agents.citing import ClaimCitation, format_chunks, to_citations
 from mesh.readability import flesch_kincaid_grade
 from mesh.retrieval.chunking import Chunk
+from mesh.retrieval.sources import InteractionNote
 from mesh.state import Citation
 
 TOP_N_CHUNKS = 5
@@ -206,3 +209,112 @@ def build_discharge_subgraph(
     builder.add_edge("merge_interactions", END)
 
     return builder.compile()
+
+
+EXTRACTOR_PROMPT = """Extract the medications named in what the patient wrote.
+
+Report the name as a generic drug name, plus the dose and frequency if they gave
+them. Leave dose and frequency empty rather than guessing -- the interaction
+lookup keys on the name, and an invented dose would be repeated back as fact."""
+
+
+class MedicationList(BaseModel):
+    medications: list[Medication]
+
+
+def build_medication_extractor(model: BaseChatModel) -> MedicationExtractor:
+    """Wrap a chat model as the discharge specialist's medication extractor."""
+    structured = model.with_structured_output(MedicationList)
+
+    def extract(query: str) -> list[Medication]:
+        result = structured.invoke([("system", EXTRACTOR_PROMPT), ("human", query)])
+
+        return MedicationList.model_validate(result).medications
+
+    return extract
+
+
+INSTRUCTION_PROMPT = """Write discharge instructions from the passages given, and nothing else.
+
+Each passage is prefixed with its chunk id. Cite the chunk id behind every claim and
+quote the sentence you relied on. Keep doses and timings exactly as the passages state
+them. If the passages do not cover something, leave it out rather than filling it in.
+
+Write for someone reading at about a US grade 8 level: short sentences, plain words."""
+
+
+class DraftedInstructions(BaseModel):
+    answer: str
+    citations: list[ClaimCitation]
+
+
+def build_instruction_drafter(model: BaseChatModel) -> Drafter:
+    """Wrap a chat model as the discharge drafter.
+
+    The same callable is used for the simplify pass -- the subgraph re-invokes it
+    with SIMPLIFY_PROMPT prepended, so one factory covers both.
+    """
+    structured = model.with_structured_output(DraftedInstructions)
+
+    def draft(prompt: str, chunks: list[Chunk]) -> tuple[str, list[Citation]]:
+        result = structured.invoke(
+            [
+                ("system", INSTRUCTION_PROMPT),
+                ("human", f"{prompt}\n\nPassages:\n{format_chunks(chunks)}"),
+            ]
+        )
+        drafted = DraftedInstructions.model_validate(result)
+
+        return drafted.answer, to_citations(drafted.citations, chunks)
+
+    return draft
+
+
+# One drug's interaction notes, fetched by generic name. Injected rather than
+# called directly so the pairing logic below is testable without the network.
+NoteFetcher = Callable[[str], list[InteractionNote]]
+
+
+def build_interaction_lookup(fetch_notes: NoteFetcher) -> InteractionLookup:
+    """Pair up the medications on one list using the drug labels.
+
+    Not a model call. A label's interaction section warns about whole drug
+    classes, so a note only becomes an Interaction when it names another
+    medication this patient is actually taking -- otherwise every warfarin label
+    would warn about every drug on earth.
+
+    Both directions of a pair are checked, because only one of the two labels may
+    mention the other. Duplicates are collapsed on the pair plus the warning
+    text, so a mutual mention is reported once.
+    """
+
+    def lookup(names: list[str]) -> list[Interaction]:
+        found: list[Interaction] = []
+        seen: set[tuple[frozenset[str], str]] = set()
+
+        for drug in names:
+            others = [other for other in names if other != drug]
+
+            for note in fetch_notes(drug):
+                lowered = note.text.lower()
+                for other in others:
+                    if other.lower() not in lowered:
+                        continue
+
+                    key = (frozenset({drug, other}), note.text)
+                    if key in seen:
+                        continue
+                    seen.add(key)
+
+                    found.append(
+                        Interaction(
+                            drugs=[drug, other],
+                            warning=note.text,
+                            chunk_id=f"openfda:{note.label_id}",
+                            source="openfda",
+                        )
+                    )
+
+        return found
+
+    return lookup

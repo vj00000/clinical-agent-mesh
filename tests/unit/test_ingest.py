@@ -150,12 +150,10 @@ def test_no_corpus_fills_a_collection_nothing_reads():
     assert {corpus.collection for corpus in CORPORA} <= set(COLLECTION_BY_ROUTE.values())
 
 
-def test_coverage_is_the_only_collection_still_unbuilt():
-    """The Medicare Coverage Database publishes bulk downloads rather than a
-    queryable API, so `coverage` cannot follow the fetch-on-demand pattern the
-    other three use. Named here so the gap cannot be quietly forgotten: when the
-    CMS corpus lands this test fails, and gets deleted.
-    """
+def test_every_collection_a_route_reads_from_is_built():
+    """Every route now has a corpus. A route whose collection is never filled
+    retrieves nothing and refuses everything, which looks like a model problem
+    and is not one."""
     built = {corpus.collection for corpus in CORPORA}
 
-    assert set(COLLECTION_BY_ROUTE.values()) - built == {"coverage"}
+    assert set(COLLECTION_BY_ROUTE.values()) == built

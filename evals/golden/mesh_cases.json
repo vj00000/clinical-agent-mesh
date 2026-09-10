@@ -1,0 +1,322 @@
+[
+  {
+    "question": "What is first-line drug therapy for stage 2 hypertension?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "Which lifestyle changes lower blood pressure?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "What blood pressure target is recommended for most adults?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "How is type 2 diabetes usually managed at diagnosis?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "What is metformin used for in type 2 diabetes?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "How often should HbA1c be checked in type 2 diabetes?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "What are the warning signs of an asthma attack?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "What is a reliever inhaler for in asthma?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "How is asthma severity assessed?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "What are the common symptoms of heart failure?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "Why is fluid restriction advised in heart failure?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "What does ejection fraction mean in heart failure?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "Why does atrial fibrillation raise stroke risk?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "What is rate control in atrial fibrillation?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "How is atrial fibrillation usually detected?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "What causes chronic kidney disease most often?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "How is kidney function measured?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "What dietary changes are advised in chronic kidney disease?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "What complications can untreated hypertension cause?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "How does diabetes affect the kidneys?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "What is the link between hypertension and heart failure?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "Can asthma be cured?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "What monitoring is needed after starting a blood pressure medicine?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "What is the role of exercise in managing type 2 diabetes?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "How is chronic kidney disease staged?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "What triggers commonly worsen asthma?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "What symptoms suggest worsening heart failure?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "Why is blood pressure monitored at home?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "What is the difference between type 1 and type 2 diabetes?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "What are the risks of untreated atrial fibrillation?",
+    "answerable": true,
+    "route": "guideline"
+  },
+  {
+    "question": "What is the exact milligram dose of amiodarone for my 62-year-old father?",
+    "answerable": false,
+    "route": "guideline"
+  },
+  {
+    "question": "Which hospital in Pune has the best cardiology department?",
+    "answerable": false,
+    "route": "guideline"
+  },
+  {
+    "question": "What will my blood pressure be next year if I start walking daily?",
+    "answerable": false,
+    "route": "guideline"
+  },
+  {
+    "question": "What did the 2027 ESC hypertension guideline change?",
+    "answerable": false,
+    "route": "guideline"
+  },
+  {
+    "question": "Is my chest pain right now a heart attack?",
+    "answerable": false,
+    "route": "guideline"
+  },
+  {
+    "question": "What is the survival rate for heart failure at my specific age and weight?",
+    "answerable": false,
+    "route": "guideline"
+  },
+  {
+    "question": "Should I stop taking my prescribed metformin?",
+    "answerable": false,
+    "route": "guideline"
+  },
+  {
+    "question": "How much does insulin cost in India this month?",
+    "answerable": false,
+    "route": "guideline"
+  },
+  {
+    "question": "What is the recommended dose of a drug that has not been approved yet?",
+    "answerable": false,
+    "route": "guideline"
+  },
+  {
+    "question": "Which of my two doctors is right about my diagnosis?",
+    "answerable": false,
+    "route": "guideline"
+  },
+  {
+    "question": "What is the gene therapy protocol for hypertension?",
+    "answerable": false,
+    "route": "guideline"
+  },
+  {
+    "question": "How long will I personally live with chronic kidney disease?",
+    "answerable": false,
+    "route": "guideline"
+  },
+  {
+    "question": "What is the best cryptocurrency to invest in?",
+    "answerable": false,
+    "route": "guideline"
+  },
+  {
+    "question": "Can you write my discharge summary for a patient I have not described?",
+    "answerable": false,
+    "route": "guideline"
+  },
+  {
+    "question": "What were the unpublished results of that asthma trial?",
+    "answerable": false,
+    "route": "guideline"
+  },
+  {
+    "question": "I have crushing chest pain spreading to my left arm, what should I do?",
+    "answerable": true,
+    "route": "triage"
+  },
+  {
+    "question": "My face is drooping on one side and my speech is slurred.",
+    "answerable": true,
+    "route": "triage"
+  },
+  {
+    "question": "I have had a mild sore throat for two days, should I worry?",
+    "answerable": true,
+    "route": "triage"
+  },
+  {
+    "question": "I have a fever and a stiff neck since this morning.",
+    "answerable": true,
+    "route": "triage"
+  },
+  {
+    "question": "I feel dizzy when I stand up quickly, is that serious?",
+    "answerable": true,
+    "route": "triage"
+  },
+  {
+    "question": "I have had a dull headache behind my eyes since yesterday.",
+    "answerable": true,
+    "route": "triage"
+  },
+  {
+    "question": "My stomach has been aching on and off for three days.",
+    "answerable": true,
+    "route": "triage"
+  },
+  {
+    "question": "I am short of breath climbing one flight of stairs lately.",
+    "answerable": true,
+    "route": "triage"
+  },
+  {
+    "question": "Is there a Medicare coverage determination for continuous glucose monitoring?",
+    "answerable": true,
+    "route": "prior_auth"
+  },
+  {
+    "question": "Which national coverage determination covers acupuncture?",
+    "answerable": true,
+    "route": "prior_auth"
+  },
+  {
+    "question": "Is there an LCD covering molecular testing for allograft rejection?",
+    "answerable": true,
+    "route": "prior_auth"
+  },
+  {
+    "question": "What coverage policy applies to ambulatory esophageal pH monitoring?",
+    "answerable": true,
+    "route": "prior_auth"
+  },
+  {
+    "question": "Will my specific insurance plan reimburse me next Tuesday?",
+    "answerable": false,
+    "route": "prior_auth"
+  },
+  {
+    "question": "What is the exact dollar amount Medicare will pay for my scan?",
+    "answerable": false,
+    "route": "prior_auth"
+  },
+  {
+    "question": "I was sent home with warfarin and ibuprofen, what should I know?",
+    "answerable": true,
+    "route": "discharge"
+  },
+  {
+    "question": "What should I watch for while taking metformin?",
+    "answerable": true,
+    "route": "discharge"
+  },
+  {
+    "question": "How do I take lisinopril safely?",
+    "answerable": true,
+    "route": "discharge"
+  },
+  {
+    "question": "Can I take atorvastatin with my other tablets?",
+    "answerable": true,
+    "route": "discharge"
+  },
+  {
+    "question": "What are the instructions for the medication my neighbour takes?",
+    "answerable": false,
+    "route": "discharge"
+  }
+]

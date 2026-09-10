@@ -128,23 +128,164 @@ stated prominently in the README — it is itself a hiring signal.
 - **LangChain resolved to 1.3.15**, a major version beyond the course's 0.3.x. `create_agent`
   now lives in `langchain.agents`; lecture snippets will not run verbatim.
 
-## 9. Status at time of backup
+## 9. Status at completion (2026-09-10)
 
-**Built and verified — 37 tests passing, ruff clean, mypy --strict clean, 3 commits.**
+**Complete and verified: 273 fast tests, 18 integration, 8 network. ruff, ruff
+format and `mypy --strict` clean.**
 
-- Shared spine: `Settings` (SecretStr), provider factory, `MeshState` / `Citation` contract
-- Retrieval: chunking, reciprocal rank fusion, BM25, hybrid orchestrator, Chroma dense adapter
-- Supervisor routing policy (confidence gate)
-- Docker Compose (Chroma + Postgres), Makefile
+Built: shared spine, retrieval (hybrid BM25 + Chroma + cross-encoder rerank),
+ingestion over four corpora, guardrails as nodes, mesh wiring, supervisor,
+four specialist subgraphs, the composition root, the eval harness and red-team
+suite, FastAPI + SSE, Dockerfile, compose, GitHub Actions.
 
-**Not yet built:** ingestion pipeline, supervisor LLM node, guideline subgraph, guardrail
-nodes, eval harness, three thin specialists, FastAPI layer, CI.
-
-**Next blocker:** ingestion needs `OPENAI_API_KEY` in `.env` (`cp .env.example .env`).
-Everything downstream depends on it.
+**Never executed:** the six model-backed prompt factories, and therefore
+`make eval`. There was no API key on the build machine. No metric in this repo
+is a measured metric yet. See `HANDOVER.md` §6.
 
 ## 10. Standing rule on metrics
 
 Every bracketed number in the resume bullets must come from an actual `make eval` run.
 Fabricated metrics are the fastest way to lose a senior interview, because the obvious
 follow-up is "walk me through how you measured that."
+
+
+---
+
+# Decisions made during the build (2026-08-13 → 2026-09-10)
+
+Everything above was decided before implementation. These came out of building
+it, and each one changed the code.
+
+## 11. The guideline revise loop refuses; the discharge one does not
+
+Both loops are bounded. They end differently, and the difference is the point.
+
+When the guideline drafter exhausts its two revisions still citing chunks that
+were never retrieved, the subgraph returns `UNGROUNDED_REFUSAL` rather than the
+best attempt so far — every attempt cited something invented, so there is no
+grounded answer to fall back to. When the discharge rewriter fails to get the
+reading grade down, it returns the dense text anyway. Prose a grade too hard is
+still usable; an ungrounded clinical claim never is.
+
+## 12. `guard_out` exempts deterministic safety escalations
+
+`guard_out` refuses any answer whose citations do not map to retrieved chunks.
+That is right for clinical claims and wrong for a red-flag escalation, which is
+a rule firing rather than a claim derived from evidence. Without an exemption, a
+Chroma outage silently converts "call an ambulance" into "I don't have the
+evidence" — the worst output this system can produce.
+
+The exemption is a `guard_flags` entry (`safety_escalation`) rather than a new
+route, so the supervisor's routing vocabulary is untouched.
+
+## 13. The model never decides what code can decide
+
+Three instances, each with tests that pin it:
+
+- **Triage.** `assess_urgency` produces a floor. `apply_urgency_floor` takes the
+  higher of the rules' reading and the model's. A prompt regression cannot
+  reassure someone into staying home.
+- **Prior auth.** The model marks each criterion met / not met / unresolved.
+  `decide_coverage` computes approve / deny / more-info, and `render_decision`
+  writes the prose, so the wording cannot contradict the verdict. `met=None`
+  means the request is *silent*, not that it failed — collapsing those two
+  turns a missing form into a denial.
+- **Discharge.** Reading grade is Flesch-Kincaid arithmetic. Interaction
+  warnings are appended in code, because a tool that finds an interaction the
+  model then forgets to mention is worse than no tool.
+
+## 14. The triage LangGraph `interrupt` was deferred
+
+The spec called for an `interrupt` for the follow-up question. A genuine
+interrupt needs a checkpointer and `thread_id` sessions, which did not exist
+when triage was built. The follow-up is returned as a clarifying question
+instead, and the next turn carries the detail. The checkpointer now exists, so
+this is a live piece of work rather than a permanent decision.
+
+## 15. Interaction warnings carry provenance
+
+The discharge `Interaction` model has `chunk_id` and `source`, and those ids
+join `retrieved_ids`. Without that, `guard_out` would see warnings that no
+retrieved chunk supports and refuse the whole answer. A tool result is evidence
+too, and evidence needs provenance.
+
+This forced `parse_openfda_interaction_notes`, which returns notes paired with
+their label id; `parse_openfda_interactions` is now a bare-text view over it.
+
+## 16. Interaction pairing is deterministic, not a model call
+
+A drug label's interaction section warns about entire drug classes. A note only
+becomes an `Interaction` when it names another medication the patient is
+actually taking — otherwise every warfarin label warns about every drug on
+earth. Both directions are checked, because only one of the two labels may
+mention the other, and duplicates collapse on the pair plus the warning text.
+
+## 17. One collection per agent, not one index
+
+`guideline`, `triage`, `coverage`, `drug`. Three reasons: a coverage query
+should not compete with drug labels for the top-20 fusion slots; BM25 term
+statistics on an already-small corpus get worse when document types are mixed
+(see §6's small-corpus trap); and per-agent recall is only measurable in evals
+if you know which corpus an answer should have come from.
+
+`COLLECTION_BY_ROUTE` states the mapping explicitly because route and collection
+names deliberately differ — `prior_auth` reads `coverage`, `discharge` reads
+`drug`. A collection is named for what it holds, an agent for what it does.
+
+## 18. The CMS corpus is a policy index, not a rulebook
+
+`api.coverage.cms.gov/v1/reports/*` is keyless and returns the current NCD and
+final-LCD listings. The sibling `/v1/data/*` routes carry the actual coverage
+criteria and require a licence token (AMA CPT, ADA CDT, AHA UB-04).
+
+So the `coverage` corpus holds policy titles, identifiers, contractors and
+dates — enough to say *which* policy governs a request, not enough to say
+whether the request meets it. `prior_auth` will therefore usually answer
+`more_info`.
+
+Three alternatives were rejected: leaving the route dead (a whole specialist
+that refuses everything looks like a bug); scraping the licensed text (a licence
+is a licence); and writing plausible criteria by hand (fabricated clinical
+policy in a portfolio project is indefensible). An honest, thin corpus with the
+limitation documented beats all three.
+
+## 19. The composition root exposed two latent bugs
+
+Nothing in production built a mesh until it existed — `build_mesh` and
+`as_specialist` had only test callers. Writing it surfaced:
+
+- **`BM25Index` could never have been populated.** It scores against the whole
+  corpus in memory, and `ChromaDense` had no way to enumerate a collection.
+  Hybrid retrieval would have silently degraded to dense-only with nothing
+  raising. Fixed by `ChromaDense.all_chunks()`.
+- **`guideline.Retriever` had a typo**, `tok_k` for `top_k`, so `HybridRetriever`
+  never satisfied the protocol. Invisible because tests pass stubs and `mypy`
+  only checks `src/`; the composition root is the first code to type-check the
+  protocol against the real retriever.
+
+## 20. `integration` is excluded from the default test run
+
+`network` and `rerank` were already excluded so `make check` stays fast. When
+Chroma is running, the integration tests took the default run from ~16s to
+~4min, which is long enough that people stop running it — and when Chroma is
+*not* running they skip silently, which is how the whole Chroma layer went
+unverified for several commits. Now `make test-integration` runs them
+deliberately and CI runs them in their own job.
+
+## 21. The red team found two real gaps on its first run
+
+Writing the adversarial suite immediately broke the injection detector:
+`disregard your rules` (the qualifier list had `previous` and `all` but not
+`your`) and persona jailbreaks (`You are now DAN…`), which no pattern covered.
+Both are fixed, with a `persona_override` pattern that still requires two
+elements together so `act as a nurse would` does not fire.
+
+The value was not the fix. It was that a suite written to be adversarial found
+holes in a guardrail its author believed was finished.
+
+## 22. Streaming is node-level, and says so
+
+SSE emits one event per graph node, then the final answer. Real token streaming
+needs streaming pushed down into every model call. Node-level events still make
+the mesh legible from outside — you watch `guard_in → supervisor → guideline →
+guard_out` arrive — but calling it token streaming would be a lie.

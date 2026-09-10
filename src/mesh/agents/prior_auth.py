@@ -9,8 +9,11 @@ approve something the criteria deny.
 from collections.abc import Callable
 from typing import Any, Protocol, TypedDict
 
+from langchain_core.language_models import BaseChatModel
 from langgraph.graph import END, START, StateGraph
+from pydantic import BaseModel
 
+from mesh.agents.citing import UNKNOWN_SOURCE, format_chunks
 from mesh.agents.prior_auth_rules import (
     Criterion,
     Decision,
@@ -21,11 +24,6 @@ from mesh.retrieval.chunking import Chunk
 from mesh.state import Citation
 
 TOP_N_CHUNKS = 5
-
-# Provenance for a criterion citing a chunk that was never retrieved. Such a
-# citation has to survive so guard_out can reject the answer, and `source` is a
-# required field, so it needs a non-empty placeholder.
-UNKNOWN_SOURCE = "unretrieved"
 
 CriteriaReader = Callable[[str, list[Chunk]], list[Criterion]]
 
@@ -117,3 +115,41 @@ def build_prior_auth_subgraph(
     builder.add_edge("decide", END)
 
     return builder.compile()
+
+
+CRITERIA_PROMPT = """You read a coverage policy and mark each requirement against a request.
+
+Each passage is prefixed with its chunk id. For every requirement the policy states,
+report the requirement, the chunk id it came from, and whether the request meets it:
+
+- met: the request clearly satisfies it
+- not met: the request clearly fails it
+- unresolved (null): the request does not say
+
+Leave it unresolved when the request is silent. Guessing there turns a missing form
+into a denial. Do not decide the outcome -- that is computed from your marks."""
+
+
+class PolicyReading(BaseModel):
+    """The model's marks. `Criterion` is reused directly: it already has exactly
+    the three fields the model is asked for, and a second near-identical schema
+    would be one more place for the two to drift apart."""
+
+    criteria: list[Criterion]
+
+
+def build_criteria_reader(model: BaseChatModel) -> CriteriaReader:
+    """Wrap a chat model as the prior-auth specialist's policy reader."""
+    structured = model.with_structured_output(PolicyReading)
+
+    def read_criteria(query: str, chunks: list[Chunk]) -> list[Criterion]:
+        result = structured.invoke(
+            [
+                ("system", CRITERIA_PROMPT),
+                ("human", f"Request: {query}\n\nPolicy:\n{format_chunks(chunks)}"),
+            ]
+        )
+
+        return PolicyReading.model_validate(result).criteria
+
+    return read_criteria

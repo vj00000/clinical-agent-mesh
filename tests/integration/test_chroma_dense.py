@@ -47,10 +47,10 @@ CORPUS = [
 
 @pytest.fixture
 def store(request):
-    collection = f"test_{request.node.name}"[:60]
-    dense = ChromaDense(
-        host="localhost", port=8001, collection=collection, embed_query=toy_embed
-    )
+    # Chroma rejects a name that does not end in a letter or digit, and
+    # truncating a long test name can land on an underscore.
+    collection = f"test_{request.node.name}"[:60].rstrip("_.-")
+    dense = ChromaDense(host="localhost", port=8001, collection=collection, embed_query=toy_embed)
     dense.reset()
     yield dense
     dense.reset()
@@ -126,3 +126,34 @@ def test_reupserting_the_same_chunk_does_not_duplicate_it(store):
     results = store.search("hypertension", top_k=10)
 
     assert len(results) == len(set(results)) == 3
+
+
+def test_all_chunks_returns_the_whole_collection(store):
+    """The lexical index is built from this. BM25 scores against the corpus in
+    memory, so it cannot be assembled from search results."""
+    store.upsert(CORPUS, [toy_embed(c.text) for c in CORPUS])
+
+    chunks = store.all_chunks()
+
+    assert {c.chunk_id for c in chunks} == {"c1", "c2", "c3"}
+
+
+def test_all_chunks_of_an_empty_collection_is_empty(store):
+    assert store.all_chunks() == []
+
+
+def test_all_chunks_pages_through_a_collection_larger_than_one_batch(store):
+    """A single get() of a large collection is a large response held twice."""
+    store.upsert(CORPUS, [toy_embed(c.text) for c in CORPUS])
+
+    chunks = store.all_chunks(batch_size=2)
+
+    assert {c.chunk_id for c in chunks} == {"c1", "c2", "c3"}
+
+
+def test_all_chunks_restores_the_text_so_bm25_can_tokenize_it(store):
+    store.upsert(CORPUS, [toy_embed(c.text) for c in CORPUS])
+
+    by_id = {c.chunk_id: c for c in store.all_chunks()}
+
+    assert by_id["c2"].text == "diabetes diabetes therapy guidance"

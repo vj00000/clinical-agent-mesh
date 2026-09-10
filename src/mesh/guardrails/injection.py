@@ -21,7 +21,7 @@ _PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
         "instruction_override",
         re.compile(
             r"\b(?:ignore|disregard|forget|override|bypass)\b"
-            r"[\s\S]{0,20}?\b(?:previous|prior|above|preceding|earlier|all)\b"
+            r"[\s\S]{0,20}?\b(?:previous|prior|above|preceding|earlier|all|your|these|those)\b"
             r"[\s\S]{0,20}?\b(?:instruction|rule|prompt|direction|guideline|constraint)s?\b",
             re.IGNORECASE,
         ),
@@ -38,6 +38,26 @@ _PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     (
         "role_marker",
         re.compile(r"(?:^|\n)\s*(?:system|assistant|user)\s*:", re.IGNORECASE),
+    ),
+    (
+        # Persona jailbreaks: reassign who the assistant is, then assert the new
+        # persona has no limits. Both halves are required, as everywhere else
+        # here -- "act as a nurse would" is an ordinary clinical framing and must
+        # not fire.
+        #
+        # The residual false positive is a second-person sentence like "you are
+        # now on metformin with no restrictions on diet". guard_in scans only
+        # what the user typed, and a patient does not write that about
+        # themselves, so the trade is accepted.
+        "persona_override",
+        re.compile(
+            r"\b(?:you\s+are\s+now|from\s+now\s+on\s+you\s+are|"
+            r"pretend\s+(?:to\s+be|you\s+are)|act\s+as|roleplay\s+as)\b"
+            r"[\s\S]{0,60}?"
+            r"\b(?:DAN|jailbroken|unfiltered|unrestricted|"
+            r"no\s+(?:restrictions|rules|limits|filters|guardrails))\b",
+            re.IGNORECASE,
+        ),
     ),
 )
 

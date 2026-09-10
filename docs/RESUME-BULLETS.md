@@ -1,173 +1,104 @@
-# Resume Bullets — Clinical Agent Mesh
+# Resume bullets
 
-Tags: **[BUILT]** true today · **[PENDING]** needs the code · **[MEASURE]** needs a real
-number from `make eval`.
+**Standing rule: every bracketed number must come from an actual `make eval` run.**
+Fabricated metrics are the fastest way to lose a senior interview, because the obvious
+follow-up is "walk me through how you measured that." No number in this file has been
+measured yet — there was no API key on the build machine.
 
-**Rule: never fill a bracket with an estimate.** The follow-up question in any senior
-interview is "how did you measure that."
-
----
-
-## The one to actually put on the resume (5 bullets)
-
-> **Clinical Agent Mesh** — LangGraph · LangChain · Chroma · FastAPI · Docker
->
-> - Architected a hierarchical multi-agent clinical assistant in LangGraph: a
->   structured-output supervisor routes queries to four isolated specialist subgraphs behind
->   PHI-redaction and citation-verification guardrail nodes, hitting **[X]%** routing accuracy
->   on a 100-query labelled benchmark.
-> - Built hybrid retrieval fusing BM25 with dense vectors by reciprocal rank, improving recall
->   **[X]%** over a dense-only baseline on the tokens clinical text depends on — drug names,
->   dosages, and ICD codes.
-> - Cut ungrounded claims from **[X]%** to **[Y]%** with a citation-verification node that
->   rejects any assertion untraceable to a retrieved chunk and triggers a bounded revise loop
->   before refusing.
-> - Shipped a regression-gated eval harness (faithfulness, citation accuracy, calibrated
->   refusal, adversarial red-team) wired into CI so a quality drop fails the build.
-> - Engineered for production: FastAPI with SSE streaming, Postgres-checkpointed sessions,
->   fail-closed retrieval, and per-node cost tracing giving **[X]ms** p95 at **[$Y]** per
->   1,000 queries.
-
-## Three-line version
-
-> - Architected a LangGraph multi-agent clinical assistant: structured-output supervisor
->   routing to four isolated specialist subgraphs behind PHI-redaction and
->   citation-verification guardrail nodes.
-> - Built hybrid BM25 + dense retrieval with reciprocal rank fusion over Chroma, chosen
->   because embedding-only search loses on drug names and clinical codes.
-> - Shipped test-first with mypy strict and a regression-gated eval harness measuring
->   faithfulness, citation accuracy, and calibrated refusal.
-
-## Honest version usable before the project is finished
-
-> - Architected a hierarchical multi-agent clinical assistant in LangGraph: a
->   structured-output supervisor routes queries to four isolated specialist subgraphs behind
->   input/output guardrail nodes, keeping specialist state private so a new agent ships
->   without touching existing ones.
-> - Built hybrid retrieval — BM25 fused with dense vectors by reciprocal rank — after
->   identifying that pure embedding search degrades on the exact tokens clinical text depends
->   on: drug names, dosages, and ICD codes.
-> - Designed the system to fail closed: an unreachable vector store raises rather than
->   silently degrading to keyword-only results, and content-addressed chunk ids keep stored
->   citations valid across full corpus rebuilds.
-> - Separated routing policy from the LLM call so the confidence gate is unit-testable without
->   network calls; sub-threshold classifications ask a clarifying question instead of guessing.
-> - Developed test-first under `mypy --strict`, with dense retrieval verified against a real
->   containerized Chroma instance using an injected embedder rather than mocks.
+To fill them in: `make up && make ingest && make eval && make eval-routing`, then paste
+what those printed. Nothing else.
 
 ---
 
-# Full inventory (the pool to draw from)
+## The bullets
 
-## 1. Multi-agent orchestration
+> **Clinical Agent Mesh** — LangGraph · LangChain · FastAPI · Chroma · Docker
+> [github.com/vj00000/clinical-agent-mesh](https://github.com/vj00000/clinical-agent-mesh)
 
-- **[BUILT]** Architected a hierarchical multi-agent clinical assistant in LangGraph:
-  structured-output supervisor routing to four isolated specialist subgraphs behind
-  input/output guardrail nodes.
-- **[BUILT]** Enforced a narrow parent/child state contract so specialist internals stay
-  private — adding a fifth agent touches no existing subgraph.
-- **[BUILT]** Separated routing policy from the LLM call, making the confidence gate
-  unit-testable without network calls.
-- **[PENDING]** Implemented multi-intent handling: queries spanning two specialists fan out
-  to both and merge under a single citation set.
-- **[PENDING]** Used LangGraph `interrupt` for human-in-the-loop follow-up questions in
-  triage, pausing the graph mid-execution and resuming from a checkpoint.
-- **[MEASURE]** Achieved **[X]%** routing accuracy across a 100-query labelled benchmark; the
-  confusion matrix identified **[pair]** as the dominant misroute and drove a prompt revision
-  recovering **[Y]** points.
+**1. Architecture — safe to use now**
 
-## 2. Retrieval / RAG
+> Built a hierarchical multi-agent clinical assistant in which a structured-output
+> supervisor routes queries to four isolated LangGraph specialist subgraphs, each owning
+> private state behind a typed parent/child contract, over public clinical corpora
+> (MedlinePlus, PubMed, openFDA, CMS).
 
-- **[BUILT]** Built hybrid retrieval fusing BM25 with dense vectors by reciprocal rank.
-- **[BUILT]** Made chunk ids content-addressed so rebuilding the corpus never invalidates
-  citations already stored in checkpoints or eval results.
-- **[BUILT]** Injected the embedding function into the vector store adapter, keeping
-  ingest-time and query-time vectors identical and enabling tests without an API key.
-- **[PENDING]** Added a local cross-encoder rerank stage (top-20 → top-5), keeping rerank
-  cost off the API bill entirely.
-- **[PENDING]** Implemented query decomposition so multi-part clinical questions retrieve per
-  sub-question before synthesis.
-- **[MEASURE]** Improved retrieval recall **[X]%** over a dense-only baseline on a
-  60-question golden set.
+*Measured?* No number needed. Verifiable by reading the repo.
 
-## 3. Guardrails and safety
+**2. Grounding — needs `make eval`**
 
-- **[BUILT]** Designed the system to fail closed: unreachable vector store raises rather than
-  degrading to keyword-only results.
-- **[PENDING]** Implemented PHI redaction and prompt-injection detection as a dedicated graph
-  node — safety as a step with its own tests, not a prompt suffix.
-- **[PENDING]** Built a citation-verification node rejecting any claim not traceable to a
-  retrieved chunk, with a bounded revise loop (max 2 passes) before refusal.
-- **[PENDING]** Added contradiction detection surfacing disagreement *between* guideline
-  sources instead of silently selecting one.
-- **[PENDING]** Implemented calibrated refusal: retrieval scores below threshold produce an
-  explicit "insufficient evidence" response.
-- **[MEASURE]** Reduced ungrounded claims from **[X]%** to **[Y]%** via citation verification.
-- **[MEASURE]** Defended against **[N]** adversarial prompts including injections planted
-  inside retrieved documents; **[X]/[N]** blocked at the guardrail node.
+> Cut ungrounded clinical claims to **[X]%** by making citation verification a graph node:
+> every claim must map to a chunk the retriever actually returned, and an answer that
+> fails is revised up to twice and then refused rather than returned.
 
-## 4. Evaluation engineering
+*Fill from:* `make eval` → `citation_accuracy`. State it as accuracy, not as a
+"reduction", unless you also run the no-guardrail baseline — see below.
 
-- **[PENDING]** Built a regression-gated eval harness measuring faithfulness, citation
-  accuracy, context recall, and refusal correctness, wired into CI so a quality drop fails
-  the build.
-- **[PENDING]** Authored a 60-question golden set including 15 deliberately unanswerable
-  questions, making calibrated refusal a measured property rather than an aspiration.
-- **[PENDING]** Built a red-team suite covering prompt injection, PHI leakage, and jailbreaks
-  toward unsafe clinical advice.
-- **[MEASURE]** Held faithfulness at **[X]** and routing accuracy at **[Y]%** as CI gates
-  across **[N]** commits.
+**3. Calibrated refusal — needs `make eval`**
 
-## 5. Cost and latency
+> Measured calibrated refusal on a 64-case labelled golden set containing 18 deliberately
+> unanswerable questions, reaching **[X]%** refusal correctness with **[N]** answers given
+> where no evidence supported one.
 
-- **[PENDING]** Instrumented per-node token, cost, and latency tracing with Langfuse.
-- **[MEASURE]** Cut cost per query **[X]%** via prompt caching, at p95 latency of **[Y]ms**.
-- **[MEASURE]** Reduced rerank spend to zero by moving it to a local cross-encoder, saving
-  **[X]** per 1,000 queries versus an API reranker.
+*Fill from:* `make eval` → `refusal_correctness` and `answered_when_unanswerable`.
+This is the strongest bullet in the set, because almost nobody measures it.
 
-## 6. Reliability
+**4. Routing — needs `make eval-routing`**
 
-- **[PENDING]** Added per-node timeouts, exponential-backoff retries, structured-output
-  validation retries, and a fallback model on rate-limit.
-- **[PENDING]** Bounded every LLM loop with an explicit pass counter, making runaway agent
-  cycles structurally impossible.
-- **[PENDING]** Persisted conversation state to a Postgres checkpointer keyed by thread id.
+> Achieved **[X]%** routing accuracy across a labelled benchmark, with a confidence gate
+> that asks a clarifying question instead of guessing below threshold.
 
-## 7. Deployment and practice
+*Fill from:* `make eval-routing`. Note the benchmark is 33 cases today; the spec's target
+is 100. Either grow it first or say "33-case" — do not imply 100.
 
-- **[BUILT]** Developed test-first throughout under `mypy --strict`, with retrieval verified
-  against a real containerized Chroma instance rather than mocks.
-- **[BUILT]** Containerized the stack with Docker Compose behind a `make` interface.
-- **[PENDING]** Served the graph over FastAPI with SSE token streaming.
-- **[PENDING]** Set up GitHub Actions running lint, strict types, and unit tests per PR with
-  the eval suite gated nightly.
+**5. Retrieval — needs a measured baseline**
 
-## 8. Per-specialist capability
+> Raised retrieval recall **[X]%** over dense-only search via hybrid BM25 + vector fusion
+> with cross-encoder reranking, targeting drug names and clinical codes where embeddings
+> underperform.
 
-- **[PENDING]** *Guideline copilot:* grounded clinical Q&A over CDC/WHO/MedlinePlus/PubMed
-  with mandatory citations and cross-source contradiction detection.
-- **[PENDING]** *Triage agent:* symptom intake with red-flag escalation, optimising recall
-  over precision because a missed emergency costs more than a false alarm.
-- **[PENDING]** *Prior-auth assistant:* deterministic criteria checking alongside the LLM over
-  real CMS coverage determinations, with an audit trail of which clause drove each decision.
-- **[PENDING]** *Discharge / med-rec:* structured medication extraction with an openFDA
-  interaction tool and readability-targeted patient summaries.
+*Measured?* **Not yet, and not by `make eval` either.** This needs a dense-only A/B run
+that does not exist. Until then either drop the number and describe the design, or build
+the comparison. Do not guess it.
 
-## 9. Data judgement
+**6. Evaluation and safety — partly measurable today**
 
-- **[BUILT]** Sourced every corpus from public-domain or open-access clinical data and
-  generated synthetic patient notes, deliberately excluding credentialed datasets such as
-  MIMIC.
+> Shipped a regression-gated eval harness (calibrated refusal, citation accuracy, routing
+> accuracy, injected-judge faithfulness) wired into CI, plus an 18-case adversarial suite
+> whose injection and PHI cases run in the ordinary test suite with no API key.
+
+*Measured?* The red-team half is real today — 273 fast tests include every injection and
+PHI case. The metric half needs `make eval`.
 
 ---
 
-## Interview prep note
+## Talking points that need no numbers
 
-The **fail-closed retrieval decision** is the strongest story here. "What happens when your
-vector DB goes down" separates people who have run systems from people who have demoed them.
-Have the `RetrievalUnavailable` reasoning ready: answering from a degraded corpus is how a
-grounded system quietly starts hallucinating.
+Use these when asked "what was hard" or "what would you do differently":
 
-Second-strongest: the **BM25 small-corpus IDF trap** — it shows you read library internals
-rather than trusting defaults, and that you fixed the fixture instead of weakening the
-assertion.
+- **The red team broke my own guardrail on its first run.** Writing the adversarial suite
+  immediately found two holes in the injection detector — `disregard your rules` (the
+  qualifier list had `previous` and `all` but not `your`) and persona jailbreaks. The
+  lesson is not the fix; it is that a suite written to be adversarial found holes in a
+  guardrail I believed was finished.
+
+- **The composition root found two latent bugs that tests could not.** Nothing in
+  production built a mesh until the very end, so `BM25Index` could never have been
+  populated — hybrid retrieval would have silently degraded to dense-only with nothing
+  raising — and a `tok_k`/`top_k` typo meant the real retriever never satisfied its own
+  protocol. Both were invisible because tests pass stubs and `mypy` only checks `src/`.
+
+- **Two bounded loops that end differently.** The guideline revise loop refuses when it
+  runs out of attempts; the discharge rewrite loop returns its best attempt. Prose a grade
+  too dense is still usable; an ungrounded clinical claim never is.
+
+- **A safety escalation is exempt from the citation check.** Getting that wrong means a
+  Chroma outage turns "call an ambulance" into "I don't have the evidence".
+
+- **I chose a thin honest corpus over a rich fabricated one.** CMS publishes the coverage
+  policy index without a key but keeps the criteria behind a licence. Rather than scrape
+  it or invent plausible criteria, the prior-auth agent says which policy governs a
+  request and admits it cannot resolve the criteria.
+
+- **What I would do next**, in order: run the evals and fill in the numbers; grow routing
+  to 100 cases; build the dense-only baseline that bullet 5 needs; label relevant chunks
+  so context recall becomes computable.

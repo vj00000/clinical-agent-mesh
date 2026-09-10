@@ -4,7 +4,11 @@ Tested against fixed payloads rather than the live API, so these assertions are
 about payload handling and not about whatever api.fda.gov returned today.
 """
 
-from mesh.retrieval.sources import parse_openfda_interactions, parse_openfda_labels
+from mesh.retrieval.sources import (
+    parse_openfda_interaction_notes,
+    parse_openfda_interactions,
+    parse_openfda_labels,
+)
 
 WITH_INTERACTIONS = """
 {
@@ -91,3 +95,20 @@ def test_a_label_without_an_id_falls_back_to_the_drug_name():
     documents = parse_openfda_labels(payload, drug="warfarin")
 
     assert documents[0].doc_id == "openfda:warfarin-0"
+
+
+def test_an_interaction_note_carries_the_label_it_came_from():
+    """The discharge specialist cites these warnings, so they need provenance."""
+    notes = parse_openfda_interaction_notes(WITH_INTERACTIONS)
+
+    assert [note.label_id for note in notes] == ["label-0", "label-0"]
+
+
+def test_a_note_from_an_identified_label_uses_that_id():
+    notes = parse_openfda_interaction_notes(LABEL)
+
+    assert notes[0].label_id == "abc-123"
+
+
+def test_notes_from_a_label_without_the_section_are_empty():
+    assert parse_openfda_interaction_notes(WITHOUT_SECTION) == []
