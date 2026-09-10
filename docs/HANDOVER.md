@@ -149,6 +149,7 @@ in `src/mesh/evals/harness.py:THRESHOLDS`, and the failure names the metric.
 | `src/mesh/api/app.py` | HTTP surface |
 | `evals/golden/` | 64 labelled mesh cases, 33 routing cases |
 | `evals/redteam/` | 18 adversarial cases |
+| `docs/INTERVIEW-QA.md` | 37 likely interview questions, with answers |
 
 ## 7a. CI is written but not switched on
 

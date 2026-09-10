@@ -1,5 +1,8 @@
 # Interview Guide — Clinical Agent Mesh
 
+> Tone, framing, and the questions to steer toward. For the question bank
+> itself — 37 likely questions with answers — see `INTERVIEW-QA.md`.
+
 How to talk about this project. Every claim here is backed by code in this repo;
 nothing is aspirational. If a section says `[NOT BUILT]`, say so out loud rather
 than implying otherwise — an interviewer who catches one inflated claim discounts

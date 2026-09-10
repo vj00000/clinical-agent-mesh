@@ -156,6 +156,7 @@ that is CPU-only by design. The pin takes it to 1.4GB.
 | `docs/HANDOVER.md` | **Start here.** What was built, in what order, the honest limits, and how to fill in the numbers |
 | `docs/DECISIONS.md` | Every design decision, the alternatives rejected, and the bugs found while building |
 | `docs/INTERVIEW-GUIDE.md` | How to discuss the project and its real limits |
+| `docs/INTERVIEW-QA.md` | 37 likely questions with answers grounded in this codebase |
 | `docs/RESUME-BULLETS.md` | Bullet inventory, tagged built / needs-measurement |
 | `docs/superpowers/specs/` | The original approved design spec |
 
